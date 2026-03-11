@@ -95,6 +95,12 @@ button {
   margin-right: 5px;
 }
 
+.header {
+  background-color: #0f0f0f;
+  display: flex;
+  justify-content: space-around;
+}
+
 @media (prefers-color-scheme: dark) {
   :root {
     color: #f6f6f6;
