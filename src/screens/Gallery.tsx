@@ -1,34 +1,51 @@
-import {useState} from "react"
+import {useState} from "react";
+import {Link} from "react-router-dom";
+import {motion} from "framer-motion"
+
+let nextId = 0;
 
 export default function Gallery(){
-    const [projects, setProjects] = useState(0);
+    const [projects, setProjects] = useState([]);    
 
-    function CreateProjectButtonPressed(){
-        setProjects(projects+1);
+    const addProject = () => {
+        setProjects(
+            [
+                ...projects,
+                { id: nextId++, name: 'New Project'+(nextId-1), date: '2020.04.15' },
+            ]
+        );
     }
 
-    if (!projects){
+    if (!projects.length){
         return (
             <div>
-                <button onClick={CreateProjectButtonPressed}>Projects Created: {projects}</button>
-                <p>Seems like you've got no projects yet... Let's fix that! <br/>
-                Hit the "Create Project" button in the top left corner</p>
-
+                <button onClick={addProject}>Create Project</button>
+                <div className="flex justify-around">
+                    <p>Seems like you've got no projects yet... Let's fix that! <br/>
+                    Hit the "Create Project" button in the top left corner</p>
+                </div>
+                
             </div>
         )
     }
     else {
         return (
             <div>
-                <button onClick={CreateProjectButtonPressed}>Projects Created: {projects}</button>
-                <div className="grid grid-cols-1 md:grid-cols-3">
-                    <p>hi</p>
-                    <p>hi</p>
-                    <p>hi</p>
-                    <p>hi</p>
+                <button onClick={addProject}>Create Project</button>
+                <div className="grid grid-cols-1 md:grid-cols-3 p-4">
+                    {projects.map(project => (
+                        <Link to={`/editor/${project.id}`}>
+                            <motion.div
+                            className="flex bg-slate-800 p-4 rounded-lg border-1 border-amber-300"
+                            whileHover={{scale: 1.1, backgroundColor: "#000060" }}
+                            whileTap={{scale:0.9}}
+                            >
+                                {project.name}
+                            </motion.div>
+                        </Link>
+                    ))}
                 </div>
             </div>
         )
-    }
-    
+    }   
 }
