@@ -2,10 +2,12 @@
 // import reactLogo from "./assets/react.svg";
 // import { invoke } from "@tauri-apps/api/core";
 import { BrowserRouter, Routes, Route, Link } from "react-router-dom";
+import { AnimatePresence, motion } from "framer-motion";
 import Gallery from "./screens/Gallery";
 import Editor from "./screens/Editor";
 import NotFound from "./screens/NotFound";
 import "./App.css";
+import { isValidElement } from "react";
 
 // function App() {
 //   const [greetMsg, setGreetMsg] = useState("");
@@ -63,8 +65,8 @@ function App(){
       </div>
     </nav>
     <Routes>
-      <Route path="/" element={<Gallery />}/>
-      <Route path="/editor/:id" element={<Editor />}/>
+      <Route path="/" element={<Gallery/>}/>
+      <Route path="/editor/:id" element={<Editor/>}/>
       <Route path="*" element={<NotFound/>}/>
     </Routes>
     </BrowserRouter>

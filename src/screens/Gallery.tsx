@@ -1,11 +1,11 @@
 import {useState} from "react";
 import {Link} from "react-router-dom";
-import {motion} from "framer-motion"
+import {AnimatePresence, motion} from "framer-motion"
 
 let nextId = 0;
 
-export default function Gallery(){
-    const [projects, setProjects] = useState([]);    
+export default function Gallery(){    
+    const [projects, setProjects] = useState([]);
 
     const addProject = () => {
         setProjects(
@@ -18,13 +18,25 @@ export default function Gallery(){
 
     if (!projects.length){
         return (
+        // <AnimatePresence mode="wait">
+        //     {isVisible && (
+        //     <motion.div
+        //     key="modal"
+        //     initial={{opacity: 0, y:20}}
+        //     animate={{opacity: 1, y:0}}
+        //     exit={{opacity: 0, y:-20}}
+        //     >
+
+        //     </motion.div>
+        //     )}
+        // </AnimatePresence>
             <div>
                 <button onClick={addProject}>Create Project</button>
                 <div className="flex justify-around">
                     <p>Seems like you've got no projects yet... Let's fix that! <br/>
                     Hit the "Create Project" button in the top left corner</p>
+                    <p>Current projects length: {nextId}</p>
                 </div>
-                
             </div>
         )
     }
