@@ -4,8 +4,14 @@ import {AnimatePresence, motion} from "framer-motion"
 
 let nextId = 0;
 
+type Project = {
+    id: number,
+    name: string,
+    date: string
+}
+
 export default function Gallery(){    
-    const [projects, setProjects] = useState([]);
+    const [projects, setProjects] = useState<Project[]>([]);
 
     const addProject = () => {
         setProjects(
@@ -18,18 +24,6 @@ export default function Gallery(){
 
     if (!projects.length){
         return (
-        // <AnimatePresence mode="wait">
-        //     {isVisible && (
-        //     <motion.div
-        //     key="modal"
-        //     initial={{opacity: 0, y:20}}
-        //     animate={{opacity: 1, y:0}}
-        //     exit={{opacity: 0, y:-20}}
-        //     >
-
-        //     </motion.div>
-        //     )}
-        // </AnimatePresence>
             <div>
                 <button onClick={addProject}>Create Project</button>
                 <div className="flex justify-around">

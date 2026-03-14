@@ -1,7 +1,7 @@
 // import { useState } from "react";
 // import reactLogo from "./assets/react.svg";
 // import { invoke } from "@tauri-apps/api/core";
-import { BrowserRouter, Routes, Route, Link } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Link, useLocation } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import Gallery from "./screens/Gallery";
 import Editor from "./screens/Editor";
@@ -55,6 +55,33 @@ import { isValidElement } from "react";
 //   );
 // }
 
+function PageWrapper({children}){
+  return (
+    <motion.div
+      key="modal"
+      initial={{opacity: 0, y:20}}
+      animate={{opacity: 1, y:0}}
+      exit={{opacity: 0, y:-20}}
+      >
+        {children}
+      </motion.div>
+  )
+}
+
+function AnimatedRoutes(){
+  const location = useLocation();
+
+  return (
+    <AnimatePresence mode="wait">
+        <Routes location={location} key={location.pathname}>
+          <Route path="/" element={<PageWrapper><Gallery/></PageWrapper>}/>
+          <Route path="/editor/:id" element={<PageWrapper><Editor/></PageWrapper>}/>
+          <Route path="*" element={<PageWrapper><NotFound/></PageWrapper>}/>
+      </Routes>
+    </AnimatePresence>
+  )
+}
+
 function App(){
   return (
     <BrowserRouter>
@@ -64,11 +91,7 @@ function App(){
         <Link to={`/editor/:id`}>Editor</Link>
       </div>
     </nav>
-    <Routes>
-      <Route path="/" element={<Gallery/>}/>
-      <Route path="/editor/:id" element={<Editor/>}/>
-      <Route path="*" element={<NotFound/>}/>
-    </Routes>
+    <AnimatedRoutes/>
     </BrowserRouter>
   )
 }
