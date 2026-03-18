@@ -7,7 +7,6 @@ import Gallery from "./screens/Gallery";
 import Editor from "./screens/Editor";
 import NotFound from "./screens/NotFound";
 import "./App.css";
-import { isValidElement } from "react";
 
 // function App() {
 //   const [greetMsg, setGreetMsg] = useState("");
