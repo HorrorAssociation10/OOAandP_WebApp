@@ -1,4 +1,4 @@
-import {BoxSelect, RectangleHorizontal, Circle, ArrowBigLeft, Save} from "lucide-react"
+import {RectangleHorizontal, Circle, Hexagon, ArrowBigLeft, Save} from "lucide-react"
 import {useParams, Link} from "react-router-dom"
 import {motion} from "framer-motion"
 
@@ -28,9 +28,9 @@ export default function Editor(){
             </header>
             <div className="flex flex-1">
                 <aside className="w-16 border-r bg-slate-800 flex flex-col justify-evenly items-center">
-                    <div className="bg-slate-600 w-12 h-12 flex justify-center items-center rounded-2xl hover:bg-slate-500"><BoxSelect/></div>
                     <div className="bg-slate-600 w-12 h-12 flex justify-center items-center rounded-2xl hover:bg-slate-500"><RectangleHorizontal/></div>
                     <div className="bg-slate-600 w-12 h-12 flex justify-center items-center rounded-2xl hover:bg-slate-500"><Circle/></div>
+                    <div className="bg-slate-600 w-12 h-12 flex justify-center items-center rounded-2xl hover:bg-slate-500"><Hexagon/></div>
                 </aside>
                 <main className="flex-1 bg-slate-100 m-2"></main>
                 <aside className="w-64 border-l bg-slate-800 flex flex-col justify-between">
