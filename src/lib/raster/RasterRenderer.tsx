@@ -1,14 +1,11 @@
+import {useRef, useEffect} from "react";
+
 export type RGBA = {r: number, g: number, b: number, a: number};
 
 export type LineAlg = 'bresenham' | 'wu';
 
 export function clampByte(v: number): number {
-    if (v<0)
-        v = 0;
-    else if (v > 255)
-        v = 255;
-
-    return v;
+    return Math.min(Math.max(v, 0), 255);
     // throw new Error('Not implemented: clampByte');
 }
 
@@ -26,6 +23,18 @@ export function hexToRGBA(hex: string, alpha = 255): RGBA {
     const color: RGBA = {r: red, g: green, b: blue, a: alpha};
     return color;
     // throw new Error('Not implemented hexToRGBA');
+}
+
+function fpart(x: number){
+    return (x - Math.floor(x));
+}
+function rfpart(x: number){
+    return (1 - fpart(x))
+}
+function swap(a: number, b: number){
+    const c: number = a;
+    a = b;
+    b = c;
 }
 
 export class RasterRenderer {
@@ -51,6 +60,9 @@ export class RasterRenderer {
 
         this.ctx = ctx;
         this._onWindowResize = () => this.resize();
+        window.addEventListener('resize', this._onWindowResize);
+
+        this.resize();
     }
 
     dispose() {
@@ -82,6 +94,11 @@ export class RasterRenderer {
     }
 
     setPixel(x: number, y: number, color: RGBA) {
+        const px = Math.floor(x * this.dpr);
+        const py = Math.floor(y * this.dpr);
+
+        if (px < 0 || px >= this.canvas.width || py < 0 || py >= this.canvas.height) return;
+
         const buf = this.buf;
         const index = this.idx(x, y);
         buf[index] = color.r;
@@ -91,32 +108,50 @@ export class RasterRenderer {
         // throw new Error('Not implemented: setColor');
     }
 
-    // Это плохой blendPixel, ибо у него деление (StraightAlpha)
     private blendPixel(x: number, y: number, color: RGBA, alphaFactor = 1) {
         const buf = this.buf;
         const index = this.idx(x, y);
 
-        const colorDest: RGBA = {r: buf[index], g: buf[index+1], b: buf[index+2], a: buf[index+3]};
-        const alphaOut = color.a + colorDest.a*(1-color.a);
+        const a = (color.a/255) * alphaFactor;
+        const Inv_a = 1 - a;
 
-        //Тут я пока что так и не додумал
-        throw new Error('Not implemented: blendPixel');
+        buf[index] = color.r*a + Inv_a*buf[index];
+        buf[index+1] = color.g*a + Inv_a*buf[index+1];
+        buf[index+2] = color.b*a + Inv_a*buf[index+2];
+        buf[index+3] = color.a*a + Inv_a*buf[index+3];
+        // Наверное, рабочий... Чёрт его знает)
+        // throw new Error('Not implemented: blendPixel');
     }
 
     resize() {
-        throw new Error('Not implemented: resize');
+        this.width = window.innerWidth;
+        this.height = window.innerHeight;
+        this.dpr = window.devicePixelRatio || 1;
+
+        this.canvas.width = this.width*this.dpr;
+        this.canvas.height = this.height*this.dpr;
+
+        this.buf = new Uint8ClampedArray(this.canvas.width * this.canvas.height * 4);
+        // throw new Error('Not implemented: resize');
     }
 
     beginFrame(clear = true) {
-        throw new Error('Not implemented: beginFrame');
+        if (clear && this.buf) {
+            this.buf.fill(0);
+        }
+        // throw new Error('Not implemented: beginFrame');
     }
 
     commit() {
-        throw new Error('Not implemented: commit');
+        if (!this.buf) return;
+
+        this.imageData = this.ctx.createImageData(this.width, this.height)
+        this.imageData.data.set(this.buf);
+        this.ctx.putImageData(this.imageData, 0, 0);
+        // throw new Error('Not implemented: commit');
     }
 
     drawLineBrassenham(x0: number, y0: number, x1: number, y1: number, color: RGBA) {
-        alert("Method works");
         const delta_x = Math.abs(x1-x0);
         const delta_y = Math.abs(y1-y0);
         const sign_x = (x0 < x1) ? 1 : -1;
@@ -140,10 +175,83 @@ export class RasterRenderer {
     }
 
     drawLineWu(x0: number, y0: number, x1: number, y1: number, color: RGBA) {
-        throw new Error('Not implemented: drawLineWu');
+        const steep: boolean = Math.abs(y1-y0) > Math.abs(x1-x0)
+        if (steep){
+            swap(x0, y0);
+            swap(x1, y1);
+        }
+        if (x0 > x1){
+            swap(x0, x1);
+            swap(y0, y1);
+        }
+
+        const dx: number = x1-x0;
+        const dy: number = y1-y0;
+        let gradient: number;
+        if (dx == 0.0){
+            gradient = 1.0;
+        }
+        else{
+            gradient = dy/dx;
+        }
+
+        //Первая точка
+        let xend = Math.floor(x0);
+        let yend = y0 + gradient * (xend -x0);
+        let xgap = 1 - (x0 - xend);
+        let xpxl1 = xend; // Будет использован в конечном цикле
+        let ypxl1 = Math.floor(yend);
+
+        if (steep) {
+            this.blendPixel(ypxl1, xpxl1, {r: color.r, g: color.g, b: color.b, a: rfpart(yend)*xgap*255})
+            this.blendPixel(ypxl1+1, xpxl1, {r: color.r, g: color.g, b: color.b, a: fpart(yend)*xgap*255})
+        }
+        else{
+            this.blendPixel(xpxl1, ypxl1, {r: color.r, g: color.g, b: color.b, a: rfpart(yend)*xgap*255})
+            this.blendPixel(xpxl1, ypxl1+1, {r: color.r, g: color.g, b: color.b, a: fpart(yend)*xgap*255})
+        }
+        let intery = yend + gradient;
+
+        // Вторая точка
+        xend = Math.ceil(x1);
+        yend = y1 + gradient * (xend - x1);
+        xgap = 1 - (xend - x1);
+        let xpxl2 = xend;
+        let ypxl2 = Math.floor(yend);
+
+        if (steep){
+            this.blendPixel(ypxl2, xpxl2, {r: color.r, g: color.g, b: color.b, a: rfpart(yend)*xgap*255})
+            this.blendPixel(ypxl2+1, xpxl2, {r: color.r, g: color.g, b: color.b, a: fpart(yend)*xgap*255})
+        }
+        else{
+            this.blendPixel(xpxl2, ypxl2, {r: color.r, g: color.g, b: color.b, a: rfpart(yend)*xgap*255})
+            this.blendPixel(xpxl2, ypxl2+1, {r: color.r, g: color.g, b: color.b, a: fpart(yend)*xgap*255})
+        }
+
+        // Главный цикл
+        if (steep) {
+            for (let x = xpxl1+1; x < xpxl2-1; ++x){
+                this.blendPixel(Math.floor(intery), x, {r: color.r, g: color.g, b: color.b, a: rfpart(intery)*255})
+                this.blendPixel(Math.floor(intery)+1, x, {r: color.r, g: color.g, b: color.b, a: fpart(intery)*255})
+                intery = intery + gradient;
+            }
+        }
+        else{
+            for (let x = xpxl1+1; x < xpxl2-1; ++x){
+                this.blendPixel(x, Math.floor(intery), {r: color.r, g: color.g, b: color.b, a: rfpart(intery)*255})
+                this.blendPixel(x, Math.floor(intery)+1, {r: color.r, g: color.g, b: color.b, a: fpart(intery)*255})
+                intery = intery + gradient;
+            }
+        }
+        // throw new Error('Not implemented: drawLineWu');
     }
 
     private drawHSpan(y: number, x0: number, x1: number, color: RGBA) {
+        const start = Math.min(x0, x1);
+        const end = Math.max(x0, x1);
+        for (let x = start; x <= end; ++x){
+            this.setPixel(x, y, color);
+        }
         throw new Error('Not implemented: drawHSpan');
     }
 
@@ -163,3 +271,90 @@ export class RasterRenderer {
         throw new Error('Not implemented: strokePolygon');
     }
 }
+
+interface CanvasSceneProps {
+    // shapes: Shape[];
+    // selectedId: string | null;
+    // onSelect: (id: string | null) => void;
+    // onUpdate: () => void;
+    // overlayTick: number;
+    lineAlg: LineAlg;
+}
+
+export const CanvasScene = ({ lineAlg }: CanvasSceneProps) => {
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const rendererRef = useRef<RasterRenderer>(null);
+    const containerRef = useRef<HTMLDivElement | null>(null);
+    
+    // react to lineAlg changes
+    useEffect(() => {
+        if (rendererRef.current) {
+            rendererRef.current.setLineAlgorithm(lineAlg);
+        }
+    }, [lineAlg]);
+    
+    useEffect(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) {
+            return;
+        }
+        
+        const renderer = new RasterRenderer(canvas);
+        renderer.setLineAlgorithm(lineAlg)
+        rendererRef.current = renderer;
+
+        const ro = new ResizeObserver(() => {
+            renderer.resize();
+        });
+    
+        if (containerRef.current) {
+            ro.observe(containerRef.current);
+        } else {
+            ro.observe(canvas);
+        }
+    
+        let raf = 0;
+
+        const frame = () => {
+            const r = rendererRef.current;
+            if (r) {
+                r.beginFrame(true); // очистить
+                // Нарисовать фигуры (Пока фигур нет, этот код закомментирован)
+                // for (const shape of shapes) {
+                    // shape.drawRaster(r);
+                // }
+                // Попробуйте нарисвать красный полигон с черной обводкой или что-нибудь ещё
+                r.drawLine(100, 100, 600, 450, {r: 255, g:255, b: 0, a: 255})
+
+                const pts = [
+                    { x: 100, y: 100 },
+                    { x: 600, y: 100 },
+                    { x: 50, y: 600 }
+                ];
+
+                const red = { r: 255, g: 0, b: 0, a: 255 };
+                const black = { r: 0, g: 0, b: 0, a: 255 };
+                // r.fillPolygon(pts, red);
+                // r.strokePolygon(pts, black, 0.5);
+
+                r.commit(); // Вывести на экран
+            }
+            raf = requestAnimationFrame(frame);
+        };
+        raf = requestAnimationFrame(frame);
+
+        return () => {
+            cancelAnimationFrame(raf);
+            ro.disconnect();
+            renderer.dispose();
+            renderer.dispose();
+        };
+    }, []);
+
+    return (
+        <div ref={containerRef}>
+            <canvas ref={canvasRef} className="w-full h-full" />
+        </div>
+    );
+}
+

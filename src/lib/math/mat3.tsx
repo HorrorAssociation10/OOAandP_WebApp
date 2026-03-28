@@ -86,7 +86,7 @@ export const mat3 = {
 
         const det = a*d - b*c;
 
-        if (Math.abs(det) < 1e-10) {
+        if (Math.abs(det) < EPS) {
             return null;
         }
 

@@ -1,5 +1,13 @@
 @import "tailwindcss";
 
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow:none;
+  color:white;
+}
+
 .logo.vite:hover {
   filter: drop-shadow(0 0 2em #747bff);
 }
@@ -100,7 +108,10 @@ button {
 .header {
   background-color: #0f0f0f;
   display: flex;
+  height: 5%;
+  max-height: 5%;
   justify-content: space-around;
+  align-items: center;
 }
 
 @media (prefers-color-scheme: dark) {
