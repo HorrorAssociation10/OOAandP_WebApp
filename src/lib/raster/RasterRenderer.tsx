@@ -89,7 +89,9 @@ export class RasterRenderer {
     // This is where the fun begins...
 
     private idx(x: number, y: number) {
-        return (y*this.width + x) * 4;
+        const x_floored = Math.floor(x);
+        const y_floored = Math.floor(y);
+        return (y_floored*this.width + x_floored) * 4;
         // throw new Error('Not implemented: idx');
     }
 
@@ -111,6 +113,8 @@ export class RasterRenderer {
     private blendPixel(x: number, y: number, color: RGBA, alphaFactor = 1) {
         const buf = this.buf;
         const index = this.idx(x, y);
+
+        if (x < 0 || x >= this.width || y < 0 || y >= this.height) return;
 
         const a = (color.a/255) * alphaFactor;
         const Inv_a = 1 - a;
@@ -247,28 +251,96 @@ export class RasterRenderer {
     }
 
     private drawHSpan(y: number, x0: number, x1: number, color: RGBA) {
-        const start = Math.min(x0, x1);
-        const end = Math.max(x0, x1);
+        let start: number = Math.min(x0, x1);
+        let end: number = Math.max(x0, x1);
+        const row: number = Math.floor(y);
+
+        if (row < 0 || row >= this.height) return;
+        start = Math.max(0, start);
+        end = Math.min(this.width-1, end);
+        const isTransparent: boolean = color.a < 255;
+
         for (let x = start; x <= end; ++x){
-            this.setPixel(x, y, color);
+            if (isTransparent){
+                this.blendPixel(x, row, color);
+            } else{
+                this.setPixel(x, y, color);
+            }
         }
-        throw new Error('Not implemented: drawHSpan');
+        // throw new Error('Not implemented: drawHSpan');
     }
 
     fillPolygon(points: {x: number, y: number}[], color: RGBA) {
-        throw new Error('Not implemented: fillPolygon');
+        if (points.length < 3) return;
+
+        let minY = Math.min(...points.map(p => p.y));
+        let maxY = Math.max(...points.map(p => p.y));
+
+        for (let y = Math.floor(minY); y <= Math.ceil(maxY); ++y){
+            const crosses: number[] = [];
+
+            for (let i = 0; i < points.length; ++i){
+                const point1 = points[i];
+                const point2 = points[(i+1) % points.length];
+
+                if ((point1.y <= y && point2.y > y) || (point2.y <= y && point1.y > y)) {
+                    const t = (y-point1.y)/(point2.y-point1.y);
+                    const x = point1.x + t * (point2.x - point1.x);
+                    crosses.push(x);
+                }
+            }
+            crosses.sort((a,b) => a-b);
+
+            for (let i = 0; i < crosses.length; ++i){
+                if (crosses[i+1] !== undefined){
+                    this.drawHSpan(y, crosses[i], crosses[i+1], color);
+                }
+            }
+        }
+        // throw new Error('Not implemented: fillPolygon');
     }
 
     fillCircle(cx: number, cy: number, radius: number, color: RGBA) {
-        throw new Error('Not implemented: fillCircle');
+        let dx: number;
+        let xstart: number;
+        let xend: number;
+        for (let y = cy - radius; y <= cy + radius; ++y){
+            dx = Math.sqrt(radius*radius - (y-cy)*(y-cy));
+            xstart = cx - dx;
+            xend = cx + dx;
+            this.drawHSpan(y, xstart, xend, color);
+        }
+        // throw new Error('Not implemented: fillCircle');
     }
 
     strokeLine(x0: number, y0: number, x1: number, y1: number, color: RGBA, width = 1) {
-        throw new Error('Not implemented: strokeLine');
+        const v_vector: {x: number, y: number} = {x: x1-x0, y: y1-y0};
+        const L = Math.sqrt(v_vector.x*v_vector.x + v_vector.y*v_vector.y);
+
+        const n1_vector: {x: number, y: number} = {x: -v_vector.y/L, y: v_vector.x/L};
+        const half: number = width/2;
+
+        const pts = [
+                    { x: x0 + half*n1_vector.x, y: y0 + half*n1_vector.y },
+                    { x: x0 - half*n1_vector.x, y: y0 - half*n1_vector.y },
+                    { x: x1 - half*n1_vector.x, y: y1 - half*n1_vector.y },
+                    { x: x1 + half*n1_vector.x, y: y1 + half*n1_vector.y }
+                ];
+        
+        this.fillPolygon(pts, color);
+        this.fillCircle(x0, y0, width/2, color);
+        this.fillCircle(x1, y1, width/2, color);        
+        // throw new Error('Not implemented: strokeLine');
     }
 
     strokePolygon(points: {x: number, y: number}[], color: RGBA, width = 1) {
-        throw new Error('Not implemented: strokePolygon');
+        for (let i = 0; i < points.length; ++i){
+            const point1 = points[i];
+            const point2 = points[(i+1) % points.length];
+
+            this.strokeLine(point1.x, point1.y, point2.x, point2.y, color, width);
+        }
+        // throw new Error('Not implemented: strokePolygon');
     }
 }
 
@@ -326,16 +398,21 @@ export const CanvasScene = ({ lineAlg }: CanvasSceneProps) => {
                 // Попробуйте нарисвать красный полигон с черной обводкой или что-нибудь ещё
                 r.drawLine(100, 100, 600, 450, {r: 255, g:255, b: 0, a: 255})
 
+                r.fillCircle(650, 275, 150, {r: 255, g: 0, b: 0, a: 255});
+                r.fillCircle(800, 275, 150, {r: 0, g: 255, b: 0, a: 255});
+                r.fillCircle(725, 350, 150, {r: 0, g: 0, b: 255, a: 128});
+
                 const pts = [
                     { x: 100, y: 100 },
                     { x: 600, y: 100 },
-                    { x: 50, y: 600 }
+                    { x: 50, y: 450 }
                 ];
 
                 const red = { r: 255, g: 0, b: 0, a: 255 };
                 const black = { r: 0, g: 0, b: 0, a: 255 };
-                // r.fillPolygon(pts, red);
-                // r.strokePolygon(pts, black, 0.5);
+                r.fillPolygon(pts, red);
+                r.strokeLine(725, 350, 1200, 600, black, 8);
+                r.strokePolygon(pts, black, 2.5);
 
                 r.commit(); // Вывести на экран
             }
@@ -357,4 +434,3 @@ export const CanvasScene = ({ lineAlg }: CanvasSceneProps) => {
         </div>
     );
 }
-
