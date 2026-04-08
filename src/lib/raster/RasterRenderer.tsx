@@ -96,10 +96,8 @@ export class RasterRenderer {
     }
 
     setPixel(x: number, y: number, color: RGBA) {
-        const px = Math.floor(x * this.dpr);
-        const py = Math.floor(y * this.dpr);
 
-        if (px < 0 || px >= this.canvas.width || py < 0 || py >= this.canvas.height) return;
+        if (x < 0 || x >= this.width || y < 0 || y >= this.height) return;
 
         const buf = this.buf;
         const index = this.idx(x, y);
@@ -128,14 +126,14 @@ export class RasterRenderer {
     }
 
     resize() {
-        this.width = window.innerWidth;
-        this.height = window.innerHeight;
+        this.canvas.width = window.innerWidth; //Тут что-то пошло не так...
+        this.canvas.height = window.innerHeight; //Надо додумать
         this.dpr = window.devicePixelRatio || 1;
 
-        this.canvas.width = this.width*this.dpr;
-        this.canvas.height = this.height*this.dpr;
+        this.width = Math.floor(this.canvas.width*this.dpr);
+        this.height = Math.floor(this.canvas.height*this.dpr);
 
-        this.buf = new Uint8ClampedArray(this.canvas.width * this.canvas.height * 4);
+        this.buf = new Uint8ClampedArray(this.width * this.height * 4);
         // throw new Error('Not implemented: resize');
     }
 
@@ -148,8 +146,8 @@ export class RasterRenderer {
 
     commit() {
         if (!this.buf) return;
-
-        this.imageData = this.ctx.createImageData(this.width, this.height)
+        
+        this.imageData = new ImageData(this.width, this.height);
         this.imageData.data.set(this.buf);
         this.ctx.putImageData(this.imageData, 0, 0);
         // throw new Error('Not implemented: commit');
@@ -399,8 +397,11 @@ export const CanvasScene = ({ lineAlg }: CanvasSceneProps) => {
                 r.drawLine(100, 100, 600, 450, {r: 255, g:255, b: 0, a: 255})
 
                 r.fillCircle(650, 275, 150, {r: 255, g: 0, b: 0, a: 255});
-                r.fillCircle(800, 275, 150, {r: 0, g: 255, b: 0, a: 255});
+                r.fillCircle(800, 275, 150, {r: 0, g: 255, b: 0, a: 240});
                 r.fillCircle(725, 350, 150, {r: 0, g: 0, b: 255, a: 128});
+
+                r.fillCircle(0, 0, 50, {r: 0, g: 0, b: 255, a: 128});
+                r.fillCircle(1366, 768, 50, {r: 0, g: 0, b: 255, a: 128});
 
                 const pts = [
                     { x: 100, y: 100 },
@@ -413,6 +414,8 @@ export const CanvasScene = ({ lineAlg }: CanvasSceneProps) => {
                 r.fillPolygon(pts, red);
                 r.strokeLine(725, 350, 1200, 600, black, 8);
                 r.strokePolygon(pts, black, 2.5);
+
+                r.drawLine(15, 15, 30, 5, {r: 255, g:0, b:0, a:255});
 
                 r.commit(); // Вывести на экран
             }
@@ -430,7 +433,7 @@ export const CanvasScene = ({ lineAlg }: CanvasSceneProps) => {
 
     return (
         <div ref={containerRef}>
-            <canvas ref={canvasRef} className="w-full h-full" />
+            <canvas ref={canvasRef} className="w-full h-full border-1 border-amber-400" />
         </div>
     );
 }
