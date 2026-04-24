@@ -42,7 +42,7 @@ export default function Gallery(){
                     {projects.map(project => (
                         <Link to={`/editor/${project.id}`}>
                             <motion.div
-                            className="flex bg-slate-800 p-4 rounded-lg border-1 border-amber-300 m-1"
+                            className="flex bg-slate-800 p-4 rounded-lg border border-amber-300 m-1"
                             whileHover={{scale: 1.1, backgroundColor: "#000060" }}
                             whileTap={{scale:0.9}}
                             >

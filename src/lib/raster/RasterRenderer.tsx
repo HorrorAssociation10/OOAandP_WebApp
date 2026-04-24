@@ -1,4 +1,5 @@
 import {useRef, useEffect} from "react";
+import { Mat3, mat3, Point2D } from "../math/mat3";
 
 export type RGBA = {r: number, g: number, b: number, a: number};
 
@@ -342,6 +343,189 @@ export class RasterRenderer {
     }
 }
 
+export type Transform = {
+    x: number,
+    y: number,
+    rotation: number,
+    scaleX: number,
+    scaleY: number
+}
+
+export type Bounds = {
+    minX: number,
+    minY: number,
+    maxX: number,
+    maxY: number
+}
+
+export abstract class Shape {
+    id = 0;
+    transform: Transform = {
+        x: 400,
+        y: 400,
+        rotation: 0,
+        scaleX: 1,
+        scaleY: 1
+    };
+    fillStyle: string = "#000000";
+    fillOpacity: number = 255;
+    strokeStyle: string = "#00ff00";
+    strokeWidth: number = 10;
+    strokeOpacity: number = 255;
+
+    getLocalToDeviceMatrix(): Mat3{
+        const tf = this.transform;
+        const shapeMatrix = mat3.fromTransform(tf.x, tf.y, tf.rotation, tf.scaleX, tf.scaleY);
+
+        return shapeMatrix;
+        // throw new Error("Not implemented yet: getLocalToDeviceMatrix()");
+    }
+    
+    getDeviceToLocalMatrix(): Mat3{
+        throw new Error("Not implemented yet: getDeviceToLocalMatrix()");
+    }
+
+    transformPointToDevice(px: number, py: number){
+        const mat: Mat3 = this.getLocalToDeviceMatrix();
+        var devicePoint: Point2D = mat3.transformPoint(mat, px, py);
+        return devicePoint;
+        // throw new Error("Not implemented yet: transformPointToDevice()");
+    }
+
+    transformPointToLocal(px: number, py: number){
+        const invMat: Mat3 = this.getDeviceToLocalMatrix();
+        var localPoint: Point2D = mat3.transformPoint(invMat, px, py);
+        return localPoint;
+        throw new Error("Not implemented yet: transformPointToLocal()");
+    }
+
+    getCenter(){
+        throw new Error("Not implemented yet: getCenter()");
+    }
+
+    resizeFromDeviceAABB(minX: number, minY: number, maxX: number, maxY: number){
+        throw new Error("Not implemented yet: resizeFromDeviceAABB()");
+    }
+
+    setBounds(minX: number, minY: number, maxX: number, maxY: number){
+        throw new Error("Not implemented yet: setBounds()");
+    }
+
+    clone(){
+        throw new Error("Not implemented yet: clone()");
+    }
+
+    abstract drawRaster(r: RasterRenderer): void;
+    abstract hitTest(px: number, py: number): boolean;
+    abstract getBounds(): Bounds;
+    abstract getLocalBounds(): Bounds;
+    abstract toJSON(): void;
+}
+
+export class Rect extends Shape {
+    constructor(public width: number, public height: number) {
+        super();
+    }
+
+    drawRaster(r: RasterRenderer): void {
+        let points = [
+            {x: -this.width/2, y: -this.height/2},
+            {x:  this.width/2, y: -this.height/2},
+            {x:  this.width/2, y:  this.height/2},
+            {x: -this.width/2, y:  this.height/2}
+        ];
+
+        for (let i = 0; i<4; ++i){
+            var devicePoint = this.transformPointToDevice(points[i].x, points[i].y);
+            points[i].x = devicePoint.x;
+            points[i].y = devicePoint.y;
+        }
+
+        let fillColor: RGBA = hexToRGBA(this.fillStyle);
+        fillColor.a = this.fillOpacity;
+
+        let strokeColor: RGBA = hexToRGBA(this.strokeStyle);
+        strokeColor.a = this.strokeOpacity;
+
+        r.strokePolygon(points, strokeColor, this.strokeWidth);
+        r.fillPolygon(points, fillColor)
+    }
+    
+    hitTest(px: number, py: number): boolean {
+        throw new Error("Not implemented yet: hitTest()");
+    }
+
+    getBounds(): Bounds {
+        throw new Error("Not implemented yet: getBounds()");
+    }
+
+    getLocalBounds(): Bounds {
+        throw new Error("Not implemented yet: getLocalBounds()");
+    }
+
+    toJSON(): void {
+        
+    }
+}
+
+export class Line extends Shape{
+    constructor(public x0: number, public y0: number, public x1: number, public y1: number) {
+        super();
+    }
+    
+    drawRaster(r: RasterRenderer): void {
+        var point_0 = this.transformPointToDevice(this.x0, this.y0);
+        var point_1 = this.transformPointToDevice(this.x1, this.y1);
+
+        let fillColor: RGBA = hexToRGBA(this.fillStyle);
+        fillColor.a = this.fillOpacity;
+
+        r.drawLine(point_0.x, point_0.y, point_1.x, point_1.y, fillColor);
+    }
+    
+    hitTest(px: number, py: number): boolean {
+        throw new Error("Not implemented yet: hitTest()");
+    }
+
+    getBounds(): Bounds {
+        throw new Error("Not implemented yet: getBounds()");
+    }
+
+    getLocalBounds(): Bounds {
+        throw new Error("Not implemented yet: getLocalBounds()");
+    }
+
+    toJSON(): void {
+        
+    }
+}
+
+export class Oval extends Shape {
+    constructor(rx: number, ry: number) {
+        super();
+    }
+
+    drawRaster(r: RasterRenderer): void {
+        
+    }
+    
+    hitTest(px: number, py: number): boolean {
+        throw new Error("Not implemented yet: hitTest()");
+    }
+
+    getBounds(): Bounds {
+        throw new Error("Not implemented yet: getBounds()");
+    }
+
+    getLocalBounds(): Bounds {
+        throw new Error("Not implemented yet: getLocalBounds()");
+    }
+
+    toJSON(): void {
+        
+    }
+}
+
 interface CanvasSceneProps {
     // shapes: Shape[];
     // selectedId: string | null;
@@ -417,6 +601,9 @@ export const CanvasScene = ({ lineAlg }: CanvasSceneProps) => {
 
                 r.drawLine(15, 15, 30, 5, {r: 255, g:0, b:0, a:255});
 
+                let otherShape: Shape = new Line(0, 50, 100, 25);
+                otherShape.drawRaster(r);
+
                 r.commit(); // Вывести на экран
             }
             raf = requestAnimationFrame(frame);
@@ -433,7 +620,7 @@ export const CanvasScene = ({ lineAlg }: CanvasSceneProps) => {
 
     return (
         <div ref={containerRef}>
-            <canvas ref={canvasRef} className="w-full h-full border-1 border-amber-400" />
+            <canvas ref={canvasRef} className="w-full h-full border border-amber-400" />
         </div>
     );
 }
