@@ -128,12 +128,15 @@ export class RasterRenderer {
     resize() {
         this.canvas.width = window.innerWidth; //Тут что-то пошло не так...
         this.canvas.height = window.innerHeight; //Надо додумать
+
         this.dpr = window.devicePixelRatio || 1;
 
         this.width = Math.floor(this.canvas.width*this.dpr);
         this.height = Math.floor(this.canvas.height*this.dpr);
 
         this.buf = new Uint8ClampedArray(this.width * this.height * 4);
+        // this.imageData = this.ctx.createImageData(this.width, this.height);
+        // this.buf = this.imageData.data;
         // throw new Error('Not implemented: resize');
     }
 
@@ -147,7 +150,7 @@ export class RasterRenderer {
     commit() {
         if (!this.buf) return;
         
-        this.imageData = new ImageData(this.width, this.height);
+        this.imageData = this.ctx.createImageData(this.width, this.height);
         this.imageData.data.set(this.buf);
         this.ctx.putImageData(this.imageData, 0, 0);
         // throw new Error('Not implemented: commit');
@@ -433,7 +436,7 @@ export const CanvasScene = ({ lineAlg }: CanvasSceneProps) => {
 
     return (
         <div ref={containerRef}>
-            <canvas ref={canvasRef} className="w-full h-full border-1 border-amber-400" />
+            <canvas ref={canvasRef} className="w-full h-full border border-amber-400" />
         </div>
     );
 }
