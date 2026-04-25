@@ -1,11 +1,19 @@
 import {RectangleHorizontal, Circle, Hexagon, ArrowBigLeft, Save} from "lucide-react"
 import {useParams, Link} from "react-router-dom"
+import {useState } from "react"
 import {motion} from "framer-motion"
-import {CanvasScene} from "../lib/raster/RasterRenderer"
+import {CanvasScene, LineAlg} from "../lib/raster/RasterRenderer"
 
 export default function Editor(){
     const {id} = useParams();
     console.log("The project ID is: " + id);
+
+    const [alg, SetLineAlg] = useState<LineAlg>('bresenham');
+    
+    const SwitchLineAlg = () => {
+        (alg != 'wu') ? SetLineAlg('wu') : SetLineAlg('bresenham');
+    }
+
     return (
         <div className="h-screen flex flex-col">
             <header className="h-14 border-b bg-slate-600 w-auto flex justify-between items-center">
@@ -33,10 +41,11 @@ export default function Editor(){
                     <div className="bg-slate-600 w-12 h-12 flex justify-center items-center rounded-2xl hover:bg-slate-500"><Circle/></div>
                     <div className="bg-slate-600 w-12 h-12 flex justify-center items-center rounded-2xl hover:bg-slate-500"><Hexagon/></div>
                 </aside>
-                <CanvasScene lineAlg="bresenham"/>
+                <CanvasScene lineAlg={alg}></CanvasScene>
                 {/* <main className="flex-1 bg-slate-100 m-2"></main> */}
                 <aside className="w-64 border-l bg-slate-800 flex flex-col justify-between">
                     <p>Тут будут свойства</p>
+                    <button onClick={SwitchLineAlg}>Сглаживание</button>
                     <p>Наверное...</p>
                 </aside>
             </div>

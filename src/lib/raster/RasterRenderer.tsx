@@ -7,7 +7,6 @@ export type LineAlg = 'bresenham' | 'wu';
 
 export function clampByte(v: number): number {
     return Math.min(Math.max(v, 0), 255);
-    // throw new Error('Not implemented: clampByte');
 }
 
 export function hexToRGBA(hex: string, alpha = 255): RGBA {
@@ -23,7 +22,6 @@ export function hexToRGBA(hex: string, alpha = 255): RGBA {
 
     const color: RGBA = {r: red, g: green, b: blue, a: alpha};
     return color;
-    // throw new Error('Not implemented hexToRGBA');
 }
 
 function fpart(x: number){
@@ -93,7 +91,6 @@ export class RasterRenderer {
         const x_floored = Math.floor(x);
         const y_floored = Math.floor(y);
         return (y_floored*this.width + x_floored) * 4;
-        // throw new Error('Not implemented: idx');
     }
 
     setPixel(x: number, y: number, color: RGBA) {
@@ -106,7 +103,6 @@ export class RasterRenderer {
         buf[index+1] = color.g;
         buf[index+2] = color.b;
         buf[index+3] = color.a;
-        // throw new Error('Not implemented: setColor');
     }
 
     private blendPixel(x: number, y: number, color: RGBA, alphaFactor = 1) {
@@ -122,8 +118,6 @@ export class RasterRenderer {
         buf[index+1] = color.g*a + Inv_a*buf[index+1];
         buf[index+2] = color.b*a + Inv_a*buf[index+2];
         buf[index+3] = color.a*a + Inv_a*buf[index+3];
-        // Наверное, рабочий... Чёрт его знает)
-        // throw new Error('Not implemented: blendPixel');
     }
 
     resize() {
@@ -135,14 +129,12 @@ export class RasterRenderer {
         this.height = Math.floor(this.canvas.height*this.dpr);
 
         this.buf = new Uint8ClampedArray(this.width * this.height * 4);
-        // throw new Error('Not implemented: resize');
     }
 
     beginFrame(clear = true) {
         if (clear && this.buf) {
             this.buf.fill(0);
         }
-        // throw new Error('Not implemented: beginFrame');
     }
 
     commit() {
@@ -151,7 +143,6 @@ export class RasterRenderer {
         this.imageData = new ImageData(this.width, this.height);
         this.imageData.data.set(this.buf);
         this.ctx.putImageData(this.imageData, 0, 0);
-        // throw new Error('Not implemented: commit');
     }
 
     drawLineBrassenham(x0: number, y0: number, x1: number, y1: number, color: RGBA) {
@@ -173,8 +164,6 @@ export class RasterRenderer {
                 err += delta_x;
             }
         }
-        // Шиш знает, рабочий или нет... А проверить пока не получилось
-        // throw new Error('Not implemented: drawLineBrassenham');
     }
 
     drawLineWu(x0: number, y0: number, x1: number, y1: number, color: RGBA) {
@@ -246,7 +235,6 @@ export class RasterRenderer {
                 intery = intery + gradient;
             }
         }
-        // throw new Error('Not implemented: drawLineWu');
     }
 
     private drawHSpan(y: number, x0: number, x1: number, color: RGBA) {
@@ -266,7 +254,6 @@ export class RasterRenderer {
                 this.setPixel(x, y, color);
             }
         }
-        // throw new Error('Not implemented: drawHSpan');
     }
 
     fillPolygon(points: {x: number, y: number}[], color: RGBA) {
@@ -296,7 +283,6 @@ export class RasterRenderer {
                 }
             }
         }
-        // throw new Error('Not implemented: fillPolygon');
     }
 
     fillCircle(cx: number, cy: number, radius: number, color: RGBA) {
@@ -309,7 +295,6 @@ export class RasterRenderer {
             xend = cx + dx;
             this.drawHSpan(y, xstart, xend, color);
         }
-        // throw new Error('Not implemented: fillCircle');
     }
 
     strokeLine(x0: number, y0: number, x1: number, y1: number, color: RGBA, width = 1) {
@@ -329,7 +314,6 @@ export class RasterRenderer {
         this.fillPolygon(pts, color);
         this.fillCircle(x0, y0, width/2, color);
         this.fillCircle(x1, y1, width/2, color);        
-        // throw new Error('Not implemented: strokeLine');
     }
 
     strokePolygon(points: {x: number, y: number}[], color: RGBA, width = 1) {
@@ -339,7 +323,6 @@ export class RasterRenderer {
 
             this.strokeLine(point1.x, point1.y, point2.x, point2.y, color, width);
         }
-        // throw new Error('Not implemented: strokePolygon');
     }
 }
 
@@ -378,29 +361,39 @@ export abstract class Shape {
         const shapeMatrix = mat3.fromTransform(tf.x, tf.y, tf.rotation, tf.scaleX, tf.scaleY);
 
         return shapeMatrix;
-        // throw new Error("Not implemented yet: getLocalToDeviceMatrix()");
     }
     
-    getDeviceToLocalMatrix(): Mat3{
-        throw new Error("Not implemented yet: getDeviceToLocalMatrix()");
+    getDeviceToLocalMatrix(): Mat3 | null{
+        const tf = this.transform;
+        const shapeMatrix = mat3.fromTransform(tf.x, tf.y, tf.rotation, tf.scaleX, tf.scaleY);
+        const invMat = mat3.invert(shapeMatrix);
+
+        return invMat;
+        // throw new Error("Not implemented yet: getDeviceToLocalMatrix()");
     }
 
     transformPointToDevice(px: number, py: number){
         const mat: Mat3 = this.getLocalToDeviceMatrix();
         var devicePoint: Point2D = mat3.transformPoint(mat, px, py);
         return devicePoint;
-        // throw new Error("Not implemented yet: transformPointToDevice()");
     }
 
     transformPointToLocal(px: number, py: number){
-        const invMat: Mat3 = this.getDeviceToLocalMatrix();
-        var localPoint: Point2D = mat3.transformPoint(invMat, px, py);
-        return localPoint;
-        throw new Error("Not implemented yet: transformPointToLocal()");
+        const invMat = this.getDeviceToLocalMatrix();
+
+        if (invMat != null){
+            var localPoint: Point2D = mat3.transformPoint(invMat, px, py);
+            return localPoint;
+        }
     }
 
-    getCenter(){
-        throw new Error("Not implemented yet: getCenter()");
+    getCenter(): Point2D{
+        var bounds = this.getBounds();
+        var center: Point2D = {
+            x: (bounds.maxX + bounds.minX)/2,
+            y: (bounds.maxY + bounds.minY)/2
+        }
+        return center;
     }
 
     resizeFromDeviceAABB(minX: number, minY: number, maxX: number, maxY: number){
@@ -456,11 +449,42 @@ export class Rect extends Shape {
     }
 
     getBounds(): Bounds {
-        throw new Error("Not implemented yet: getBounds()");
+        let points = [
+            {x: -this.width/2, y: -this.height/2},
+            {x:  this.width/2, y: -this.height/2},
+            {x:  this.width/2, y:  this.height/2},
+            {x: -this.width/2, y:  this.height/2}
+        ];
+        for (let i = 0; i<4; ++i){
+            var devicePoint = this.transformPointToDevice(points[i].x, points[i].y);
+            points[i].x = devicePoint.x;
+            points[i].y = devicePoint.y;
+        }
+
+        let bounds: Bounds = {
+            minX: Math.min(points[0].x, points[1].x, points[2].x, points[3].x),
+            minY: Math.min(points[0].y, points[1].y, points[2].y, points[3].y),
+            maxX: Math.max(points[0].x, points[1].x, points[2].x, points[3].x),
+            maxY: Math.max(points[0].y, points[1].y, points[2].y, points[3].y)
+        }
+        return bounds;
     }
 
     getLocalBounds(): Bounds {
-        throw new Error("Not implemented yet: getLocalBounds()");
+        let points = [
+            {x: -this.width/2, y: -this.height/2},
+            {x:  this.width/2, y: -this.height/2},
+            {x:  this.width/2, y:  this.height/2},
+            {x: -this.width/2, y:  this.height/2}
+        ];
+        let bounds: Bounds = {
+            minX: Math.min(points[0].x, points[1].x, points[2].x, points[3].x),
+            minY: Math.min(points[0].y, points[1].y, points[2].y, points[3].y),
+            maxX: Math.max(points[0].x, points[1].x, points[2].x, points[3].x),
+            maxY: Math.max(points[0].y, points[1].y, points[2].y, points[3].y)
+        }
+        return bounds;
+        // throw new Error("Not implemented yet: getLocalBounds()");
     }
 
     toJSON(): void {
@@ -469,18 +493,19 @@ export class Rect extends Shape {
 }
 
 export class Line extends Shape{
-    constructor(public x0: number, public y0: number, public x1: number, public y1: number) {
+    constructor(public x0: number, public y0: number, public x1: number, public y1: number, public width: number = 1) {
         super();
     }
     
     drawRaster(r: RasterRenderer): void {
-        var point_0 = this.transformPointToDevice(this.x0, this.y0);
-        var point_1 = this.transformPointToDevice(this.x1, this.y1);
+        var point_0 = this.transformPointToDevice((this.x0-this.x1)/2, (this.y0-this.y1)/2);
+        var point_1 = this.transformPointToDevice((this.x1-this.x0)/2, (this.y1-this.y0)/2);
 
         let fillColor: RGBA = hexToRGBA(this.fillStyle);
         fillColor.a = this.fillOpacity;
+        this.strokeWidth = this.width;
 
-        r.drawLine(point_0.x, point_0.y, point_1.x, point_1.y, fillColor);
+        r.strokeLine(point_0.x, point_0.y, point_1.x, point_1.y, fillColor, this.strokeWidth);
     }
     
     hitTest(px: number, py: number): boolean {
@@ -488,11 +513,27 @@ export class Line extends Shape{
     }
 
     getBounds(): Bounds {
-        throw new Error("Not implemented yet: getBounds()");
+        var point_0 = this.transformPointToDevice((this.x0-this.x1)/2, (this.y0-this.y1)/2);
+        var point_1 = this.transformPointToDevice((this.x1-this.x0)/2, (this.y1-this.y0)/2);
+
+        let bounds: Bounds = {
+            minX: Math.min(point_0.x, point_1.x),
+            minY: Math.min(point_0.y, point_1.y),
+            maxX: Math.max(point_0.x, point_1.x),
+            maxY: Math.max(point_0.y, point_1.y)
+        }
+        return bounds;
     }
 
     getLocalBounds(): Bounds {
-        throw new Error("Not implemented yet: getLocalBounds()");
+        let bounds: Bounds = {
+            minX: Math.min(this.x0, this.x1),
+            minY: Math.min(this.y0, this.y1),
+            maxX: Math.max(this.x0, this.x1),
+            maxY: Math.max(this.y0, this.y1)
+        }
+        return bounds;
+        // throw new Error("Not implemented yet: getLocalBounds()");
     }
 
     toJSON(): void {
@@ -500,13 +541,27 @@ export class Line extends Shape{
     }
 }
 
-export class Oval extends Shape {
-    constructor(rx: number, ry: number) {
+export class Ellipse extends Shape {
+    constructor(public cx: number, public cy: number, public rx: number, public ry: number) {
         super();
     }
 
     drawRaster(r: RasterRenderer): void {
-        
+        let points = [];
+        for (let i = 0; i < 2*Math.PI; i += Math.PI/30){
+            const point: Point2D = {x: this.rx * Math.cos(i), y: this.ry * Math.sin(i)};
+            var ellipsePoint = this.transformPointToDevice(point.x, point.y);
+            points.push(ellipsePoint);
+        }
+
+        let fillColor: RGBA = hexToRGBA(this.fillStyle);
+        fillColor.a = this.fillOpacity;
+
+        let strokeColor: RGBA = hexToRGBA(this.strokeStyle);
+        strokeColor.a = this.strokeOpacity;
+
+        r.strokePolygon(points, strokeColor, this.strokeWidth);
+        r.fillPolygon(points, fillColor)
     }
     
     hitTest(px: number, py: number): boolean {
@@ -514,10 +569,36 @@ export class Oval extends Shape {
     }
 
     getBounds(): Bounds {
-        throw new Error("Not implemented yet: getBounds()");
+        var points = [
+            this.transformPointToDevice(-this.rx, -this.ry),
+            this.transformPointToDevice(-this.rx,  this.ry),
+            this.transformPointToDevice( this.rx,  this.ry),
+            this.transformPointToDevice( this.rx, -this.ry)
+        ]
+        var bounds: Bounds ={
+            minX: Math.min(points[0].x, points[1].x, points[2].x, points[3].x),
+            minY: Math.min(points[0].y, points[1].y, points[2].y, points[3].y),
+            maxX: Math.max(points[0].x, points[1].x, points[2].x, points[3].x),
+            maxY: Math.max(points[0].y, points[1].y, points[2].y, points[3].y)
+        }
+        return bounds;
+        // throw new Error("Not implemented yet: getBounds()");
     }
 
     getLocalBounds(): Bounds {
+        var points = [
+            {x: -this.rx, y: -this.ry},
+            {x: -this.rx, y:  this.ry},
+            {x:  this.rx, y:  this.ry},
+            {x:  this.rx, y: -this.ry}
+        ]
+        var bounds: Bounds ={
+            minX: Math.min(points[0].x, points[1].x, points[2].x, points[3].x),
+            minY: Math.min(points[0].y, points[1].y, points[2].y, points[3].y),
+            maxX: Math.max(points[0].x, points[1].x, points[2].x, points[3].x),
+            maxY: Math.max(points[0].y, points[1].y, points[2].y, points[3].y)
+        }
+        return bounds;
         throw new Error("Not implemented yet: getLocalBounds()");
     }
 
@@ -601,8 +682,21 @@ export const CanvasScene = ({ lineAlg }: CanvasSceneProps) => {
 
                 r.drawLine(15, 15, 30, 5, {r: 255, g:0, b:0, a:255});
 
-                let otherShape: Shape = new Line(0, 50, 100, 25);
+                //Primary shape
+                let otherShape: Shape = new Line(0, 0, 100, 120, 15);
+                otherShape.transform.rotation = 3;
+                otherShape.transform.y = 500;
+                otherShape.transform.x = 500;
                 otherShape.drawRaster(r);
+
+                //Dots for marking center and anchor
+                r.fillCircle(otherShape.getCenter().x, otherShape.getCenter().y, 5, {r: 255, g: 0, b: 0, a: 255});
+                r.fillCircle(otherShape.transform.x, otherShape.transform.y, 5, {r: 0, g: 255, b: 0, a: 255});
+
+                //Alerts
+                // alert("Transform: (" + otherShape.transform.x + ", " + otherShape.transform.y + ")");
+                // alert("Bounds: " + otherShape.getBounds().minX + " " + otherShape.getBounds().minY + " " + otherShape.getBounds().maxX + " " + otherShape.getBounds().maxY + " ");
+                // alert("Center: (" + otherShape.getCenter().x + ", " + otherShape.getCenter().y + ")");
 
                 r.commit(); // Вывести на экран
             }
