@@ -2,7 +2,7 @@ import {RectangleHorizontal, Circle, Hexagon, ArrowBigLeft, Save} from "lucide-r
 import {useParams, Link} from "react-router-dom"
 import {useState } from "react"
 import {motion} from "framer-motion"
-import {CanvasScene, LineAlg} from "../lib/raster/RasterRenderer"
+import {CanvasScene, LineAlg, Shape} from "../lib/raster/RasterRenderer"
 
 export default function Editor(){
     const {id} = useParams();
@@ -13,6 +13,7 @@ export default function Editor(){
     const SwitchLineAlg = () => {
         (alg != 'wu') ? SetLineAlg('wu') : SetLineAlg('bresenham');
     }
+    let shapes: Shape[] = [];
 
     return (
         <div className="h-screen flex flex-col">
@@ -41,7 +42,7 @@ export default function Editor(){
                     <div className="bg-slate-600 w-12 h-12 flex justify-center items-center rounded-2xl hover:bg-slate-500"><Circle/></div>
                     <div className="bg-slate-600 w-12 h-12 flex justify-center items-center rounded-2xl hover:bg-slate-500"><Hexagon/></div>
                 </aside>
-                <CanvasScene lineAlg={alg}></CanvasScene>
+                <CanvasScene shapes={shapes} lineAlg={alg}></CanvasScene>
                 {/* <main className="flex-1 bg-slate-100 m-2"></main> */}
                 <aside className="w-64 border-l bg-slate-800 flex flex-col justify-between">
                     <p>Тут будут свойства</p>

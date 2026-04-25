@@ -121,12 +121,22 @@ export class RasterRenderer {
     }
 
     resize() {
-        this.canvas.width = window.innerWidth; //Тут что-то пошло не так...
-        this.canvas.height = window.innerHeight; //Надо додумать
+        const rect = this.canvas.getBoundingClientRect();
+        
+        const cssWidth = Math.max(1, Math.floor(rect.width));
+        const cssHeight = Math.max(1, Math.floor(rect.height));
         this.dpr = window.devicePixelRatio || 1;
 
-        this.width = Math.floor(this.canvas.width*this.dpr);
-        this.height = Math.floor(this.canvas.height*this.dpr);
+        const physWidth = Math.round(cssWidth*this.dpr);
+        const physHeight = Math.round(cssHeight*this.dpr);
+
+        if (this.canvas.width !== physWidth || this.canvas.height !== physHeight){
+            this.canvas.width = physWidth;
+            this.canvas.height = physHeight;
+        }
+        
+        this.width = physWidth;
+        this.height = physHeight;
 
         this.buf = new Uint8ClampedArray(this.width * this.height * 4);
     }
@@ -445,6 +455,14 @@ export class Rect extends Shape {
     }
     
     hitTest(px: number, py: number): boolean {
+        var localPoint = this.transformPointToLocal(px, py);
+
+        if (!localPoint) return false;
+
+        if ((-this.width/2 <= localPoint.x && localPoint.x <= this.width/2)
+            && (-this.height/2 <= localPoint.y && localPoint.y <= this.height/2)){
+                alert("You clicked a rectangle!");
+        }
         throw new Error("Not implemented yet: hitTest()");
     }
 
@@ -487,8 +505,27 @@ export class Rect extends Shape {
         // throw new Error("Not implemented yet: getLocalBounds()");
     }
 
-    toJSON(): void {
-        
+    toJSON(): string {
+        let rectProps = {
+            id: this.id,
+            width: this.width,
+            height: this.height,
+            transform: {
+                x: this.transform.x,
+                y: this.transform.y,
+                rotation: this.transform.rotation,
+                scaleX: this.transform.scaleX,
+                scaleY: this.transform.scaleY
+            },
+            fillStyle: this.fillStyle,
+            fillOpacity: this.fillOpacity,
+            strokeStyle: this.strokeStyle,
+            strokeWidth: this.strokeWidth,
+            strokeOpacity: this.strokeOpacity
+        }
+
+        let rectPropsJson = JSON.stringify(rectProps);
+        return rectPropsJson;
     }
 }
 
@@ -536,8 +573,29 @@ export class Line extends Shape{
         // throw new Error("Not implemented yet: getLocalBounds()");
     }
 
-    toJSON(): void {
-        
+    toJSON(): string {
+        let rectProps = {
+            id: this.id,
+            x0: this.x0,
+            y0: this.y0,
+            x1: this.x1,
+            y1: this.y1,    
+            transform: {
+                x: this.transform.x,
+                y: this.transform.y,
+                rotation: this.transform.rotation,
+                scaleX: this.transform.scaleX,
+                scaleY: this.transform.scaleY
+            },
+            fillStyle: this.fillStyle,
+            fillOpacity: this.fillOpacity,
+            strokeStyle: this.strokeStyle,
+            strokeWidth: this.strokeWidth,
+            strokeOpacity: this.strokeOpacity
+        }
+
+        let rectPropsJson = JSON.stringify(rectProps);
+        return rectPropsJson;
     }
 }
 
@@ -599,16 +657,37 @@ export class Ellipse extends Shape {
             maxY: Math.max(points[0].y, points[1].y, points[2].y, points[3].y)
         }
         return bounds;
-        throw new Error("Not implemented yet: getLocalBounds()");
+        // throw new Error("Not implemented yet: getLocalBounds()");
     }
 
-    toJSON(): void {
-        
+    toJSON(): string {
+        let rectProps = {
+            id: this.id,
+            cx: this.cx,
+            cy: this.cy,
+            rx: this.rx,
+            ry: this.ry,
+            transform: {
+                x: this.transform.x,
+                y: this.transform.y,
+                rotation: this.transform.rotation,
+                scaleX: this.transform.scaleX,
+                scaleY: this.transform.scaleY
+            },
+            fillStyle: this.fillStyle,
+            fillOpacity: this.fillOpacity,
+            strokeStyle: this.strokeStyle,
+            strokeWidth: this.strokeWidth,
+            strokeOpacity: this.strokeOpacity
+        }
+
+        let rectPropsJson = JSON.stringify(rectProps);
+        return rectPropsJson;   
     }
 }
 
 interface CanvasSceneProps {
-    // shapes: Shape[];
+    shapes: Shape[];
     // selectedId: string | null;
     // onSelect: (id: string | null) => void;
     // onUpdate: () => void;
@@ -616,7 +695,7 @@ interface CanvasSceneProps {
     lineAlg: LineAlg;
 }
 
-export const CanvasScene = ({ lineAlg }: CanvasSceneProps) => {
+export const CanvasScene = ({ shapes, lineAlg }: CanvasSceneProps) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const rendererRef = useRef<RasterRenderer>(null);
     const containerRef = useRef<HTMLDivElement | null>(null);
@@ -650,6 +729,16 @@ export const CanvasScene = ({ lineAlg }: CanvasSceneProps) => {
     
         let raf = 0;
 
+        canvas.addEventListener('click', (event) =>{
+            const rect = canvas.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y  = event.clientY - rect.top;
+            console.log("You clicked at: (" + x + ", " + y + ")");
+            for (const shape of shapes){
+                shape.hitTest(x, y);
+            }
+        });
+
         const frame = () => {
             const r = rendererRef.current;
             if (r) {
@@ -659,40 +748,29 @@ export const CanvasScene = ({ lineAlg }: CanvasSceneProps) => {
                     // shape.drawRaster(r);
                 // }
                 // Попробуйте нарисвать красный полигон с черной обводкой или что-нибудь ещё
-                r.drawLine(100, 100, 600, 450, {r: 255, g:255, b: 0, a: 255})
 
-                r.fillCircle(650, 275, 150, {r: 255, g: 0, b: 0, a: 255});
-                r.fillCircle(800, 275, 150, {r: 0, g: 255, b: 0, a: 240});
-                r.fillCircle(725, 350, 150, {r: 0, g: 0, b: 255, a: 128});
+                let SomeRect: Shape = new Rect(70, 120);
+                SomeRect.transform.x = 600;
+                SomeRect.transform.y = 150;
+                SomeRect.transform.rotation = 1;
+                SomeRect.fillStyle = "#990000";
+                SomeRect.fillOpacity = 128;
+                SomeRect.strokeStyle = "#54a4f2";
+                shapes.push(SomeRect);
+                SomeRect.drawRaster(r);
 
-                r.fillCircle(0, 0, 50, {r: 0, g: 0, b: 255, a: 128});
-                r.fillCircle(1366, 768, 50, {r: 0, g: 0, b: 255, a: 128});
+                let SomeLine: Shape = new Line(0, 0, 100, 120, 15);
+                SomeLine.transform.rotation = 3;
+                SomeLine.transform.y = 200;
+                SomeLine.transform.x = 200;
+                SomeLine.fillStyle = "#d31486";
+                SomeLine.drawRaster(r);
 
-                const pts = [
-                    { x: 100, y: 100 },
-                    { x: 600, y: 100 },
-                    { x: 50, y: 450 }
-                ];
-
-                const red = { r: 255, g: 0, b: 0, a: 255 };
-                const black = { r: 0, g: 0, b: 0, a: 255 };
-                r.fillPolygon(pts, red);
-                r.strokeLine(725, 350, 1200, 600, black, 8);
-                r.strokePolygon(pts, black, 2.5);
-
-                r.drawLine(15, 15, 30, 5, {r: 255, g:0, b:0, a:255});
-
-                //Primary shape
-                let otherShape: Shape = new Line(0, 0, 100, 120, 15);
-                otherShape.transform.rotation = 3;
-                otherShape.transform.y = 500;
-                otherShape.transform.x = 500;
-                otherShape.drawRaster(r);
-
-                //Dots for marking center and anchor
-                r.fillCircle(otherShape.getCenter().x, otherShape.getCenter().y, 5, {r: 255, g: 0, b: 0, a: 255});
-                r.fillCircle(otherShape.transform.x, otherShape.transform.y, 5, {r: 0, g: 255, b: 0, a: 255});
-
+                let SomeEllipse: Shape = new Ellipse(800, 200, 60, 60);
+                SomeEllipse.transform.rotation = 2;
+                SomeEllipse.drawRaster(r);
+                
+                r.fillCircle(SomeRect.getCenter().x, SomeRect.getCenter().y, 5, {r:0, g:0, b:0, a:255});
                 //Alerts
                 // alert("Transform: (" + otherShape.transform.x + ", " + otherShape.transform.y + ")");
                 // alert("Bounds: " + otherShape.getBounds().minX + " " + otherShape.getBounds().minY + " " + otherShape.getBounds().maxX + " " + otherShape.getBounds().maxY + " ");
