@@ -352,7 +352,7 @@ export type Bounds = {
 }
 
 export abstract class Shape {
-    id = 0;
+    id = Math.floor(Math.random()*Number.MAX_SAFE_INTEGER);
     transform: Transform = {
         x: 400,
         y: 400,
@@ -415,14 +415,17 @@ export abstract class Shape {
     }
 
     clone(){
-        throw new Error("Not implemented yet: clone()");
+        const copy: Shape = Object.create(this);
+        copy.id = Math.floor(Math.random()*Number.MAX_SAFE_INTEGER);
+        return copy;
+        // throw new Error("Not implemented yet: clone()");
     }
 
     abstract drawRaster(r: RasterRenderer): void;
     abstract hitTest(px: number, py: number): boolean;
     abstract getBounds(): Bounds;
     abstract getLocalBounds(): Bounds;
-    abstract toJSON(): void;
+    abstract toJSON(): string;
 }
 
 export class Rect extends Shape {
@@ -461,9 +464,12 @@ export class Rect extends Shape {
 
         if ((-this.width/2 <= localPoint.x && localPoint.x <= this.width/2)
             && (-this.height/2 <= localPoint.y && localPoint.y <= this.height/2)){
-                alert("You clicked a rectangle!");
+                alert("You clicked a " + this.id + "!");
+                return true;
         }
-        throw new Error("Not implemented yet: hitTest()");
+        else
+            return false;
+        // throw new Error("Not implemented yet: hitTest()");
     }
 
     getBounds(): Bounds {
@@ -623,7 +629,17 @@ export class Ellipse extends Shape {
     }
     
     hitTest(px: number, py: number): boolean {
-        throw new Error("Not implemented yet: hitTest()");
+        var localPoint = this.transformPointToLocal(px, py);
+        if (!localPoint) return false;
+
+        var normCoords: Point2D = {x: localPoint.x/this.rx, y: localPoint.y/this.ry};
+        if (normCoords.x*normCoords.x + normCoords.y*normCoords.y <= 1){
+            alert("You clicked a " + this.id + "!");
+            return true;
+        }
+        else
+            return false;
+        // throw new Error("Not implemented yet: hitTest()");
     }
 
     getBounds(): Bounds {
@@ -736,6 +752,7 @@ export const CanvasScene = ({ shapes, lineAlg }: CanvasSceneProps) => {
             console.log("You clicked at: (" + x + ", " + y + ")");
             for (const shape of shapes){
                 shape.hitTest(x, y);
+                console.log(shapes);
             }
         });
 
@@ -743,6 +760,7 @@ export const CanvasScene = ({ shapes, lineAlg }: CanvasSceneProps) => {
             const r = rendererRef.current;
             if (r) {
                 r.beginFrame(true); // очистить
+                shapes = [];
                 // Нарисовать фигуры (Пока фигур нет, этот код закомментирован)
                 // for (const shape of shapes) {
                     // shape.drawRaster(r);
@@ -768,13 +786,15 @@ export const CanvasScene = ({ shapes, lineAlg }: CanvasSceneProps) => {
 
                 let SomeEllipse: Shape = new Ellipse(800, 200, 60, 60);
                 SomeEllipse.transform.rotation = 2;
+                shapes.push(SomeEllipse);
                 SomeEllipse.drawRaster(r);
+
+                let SomeClone = SomeRect.clone();
+                SomeClone.transform.x += 100;
+                SomeClone.transform.y += 100;
+                SomeClone.drawRaster(r);
                 
                 r.fillCircle(SomeRect.getCenter().x, SomeRect.getCenter().y, 5, {r:0, g:0, b:0, a:255});
-                //Alerts
-                // alert("Transform: (" + otherShape.transform.x + ", " + otherShape.transform.y + ")");
-                // alert("Bounds: " + otherShape.getBounds().minX + " " + otherShape.getBounds().minY + " " + otherShape.getBounds().maxX + " " + otherShape.getBounds().maxY + " ");
-                // alert("Center: (" + otherShape.getCenter().x + ", " + otherShape.getCenter().y + ")");
 
                 r.commit(); // Вывести на экран
             }
