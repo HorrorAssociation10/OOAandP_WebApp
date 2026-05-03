@@ -407,7 +407,31 @@ export abstract class Shape {
     }
 
     resizeFromDeviceAABB(minX: number, minY: number, maxX: number, maxY: number){
-        throw new Error("Not implemented yet: resizeFromDeviceAABB()");
+        const curLocBounds = this.getLocalBounds();
+        const localWidth = curLocBounds.maxX - curLocBounds.minX;
+        const localHeight = curLocBounds.maxY - curLocBounds.minY;
+
+        const targetWidth = maxX - minX;
+        const targetHeight = maxY - minY;
+
+        this.transform.scaleX = targetWidth / localWidth;
+        this.transform.scaleY = targetHeight / localHeight;
+
+        const centerX = (minX + maxX) / 2;
+        const centerY = (minY + maxY) / 2;
+
+        const localCenterX = (curLocBounds.minX + curLocBounds.maxX) / 2;
+        const localCenterY = (curLocBounds.minY + curLocBounds.maxY) / 2;
+
+        const sX = localCenterX * this.transform.scaleX;
+        const sY = localCenterY * this.transform.scaleY;
+
+        const cos = Math.cos(this.transform.rotation);
+        const sin = Math.sin(this.transform.rotation);
+
+        this.transform.x = centerX - (sX * cos - sY * sin);
+        this.transform.y = centerY - (sX * sin + sY * cos);
+        // throw new Error("Not implemented yet: resizeFromDeviceAABB()");
     }
 
     setBounds(minX: number, minY: number, maxX: number, maxY: number){
@@ -536,46 +560,71 @@ export class Rect extends Shape {
 }
 
 export class Line extends Shape{
+
+    private length: number;
     constructor(public x0: number, public y0: number, public x1: number, public y1: number, public width: number = 1) {
         super();
+
+        const dx = x1 - x0;
+        const dy = y1 - y0;
+        this.length = Math.sqrt(dx * dx + dy * dy);
+
+        this.transform.x = (x0 + x1) / 2;
+        this.transform.y = (y0 + y1) / 2;
+
+        this.transform.rotation = Math.atan2(dy, dx);
     }
     
+    
     drawRaster(r: RasterRenderer): void {
-        var point_0 = this.transformPointToDevice((this.x0-this.x1)/2, (this.y0-this.y1)/2);
-        var point_1 = this.transformPointToDevice((this.x1-this.x0)/2, (this.y1-this.y0)/2);
+        const p0 = this.transformPointToDevice(-this.length / 2, 0);
+        const p1 = this.transformPointToDevice(this.length / 2, 0);
 
         let fillColor: RGBA = hexToRGBA(this.fillStyle);
         fillColor.a = this.fillOpacity;
         this.strokeWidth = this.width;
 
-        r.strokeLine(point_0.x, point_0.y, point_1.x, point_1.y, fillColor, this.strokeWidth);
+        r.strokeLine(p0.x, p0.y, p1.x, p1.y, fillColor, this.strokeWidth);
     }
     
     hitTest(px: number, py: number): boolean {
-        throw new Error("Not implemented yet: hitTest()");
+        const localPoint = this.transformPointToLocal(px, py);
+        if (!localPoint) return false;
+
+        const halfLen = this.length / 2;
+        const x = localPoint.x;
+        const y = localPoint.y;
+
+        const threshold = (this.strokeWidth / 2) + 5; 
+
+        if (x >= -halfLen - threshold && x <= halfLen + threshold) {
+            if (Math.abs(y) <= threshold) {
+                alert("You clicked a line: " + this.id + "!");
+                return true;
+            }
+        }
+        return false;
+        // throw new Error("Not implemented yet: hitTest()");
     }
 
     getBounds(): Bounds {
-        var point_0 = this.transformPointToDevice((this.x0-this.x1)/2, (this.y0-this.y1)/2);
-        var point_1 = this.transformPointToDevice((this.x1-this.x0)/2, (this.y1-this.y0)/2);
-
-        let bounds: Bounds = {
-            minX: Math.min(point_0.x, point_1.x),
-            minY: Math.min(point_0.y, point_1.y),
-            maxX: Math.max(point_0.x, point_1.x),
-            maxY: Math.max(point_0.y, point_1.y)
-        }
-        return bounds;
+        const p0 = this.transformPointToDevice(-this.length / 2, 0);
+        const p1 = this.transformPointToDevice(this.length / 2, 0);
+        return {
+            minX: Math.min(p0.x, p1.x),
+            minY: Math.min(p0.y, p1.y),
+            maxX: Math.max(p0.x, p1.x),
+            maxY: Math.max(p0.y, p1.y)
+        };
     }
 
     getLocalBounds(): Bounds {
-        let bounds: Bounds = {
-            minX: Math.min(this.x0, this.x1),
-            minY: Math.min(this.y0, this.y1),
-            maxX: Math.max(this.x0, this.x1),
-            maxY: Math.max(this.y0, this.y1)
+        return {
+            minX: -this.length / 2,
+            maxX: this.length / 2,
+            minY: -0.5, // небольшая толщина для корректности математики
+            maxY: 0.5
         }
-        return bounds;
         // throw new Error("Not implemented yet: getLocalBounds()");
     }
 
@@ -778,14 +827,15 @@ export const CanvasScene = ({ shapes, lineAlg }: CanvasSceneProps) => {
                 SomeRect.drawRaster(r);
 
                 let SomeLine: Shape = new Line(0, 0, 100, 120, 15);
-                SomeLine.transform.rotation = 3;
+                // SomeLine.transform.rotation = 0;
                 SomeLine.transform.y = 200;
                 SomeLine.transform.x = 200;
                 SomeLine.fillStyle = "#d31486";
+                shapes.push(SomeLine);
                 SomeLine.drawRaster(r);
 
                 let SomeEllipse: Shape = new Ellipse(800, 200, 60, 60);
-                SomeEllipse.transform.rotation = 2;
+                SomeEllipse.transform.rotation = 0;
                 shapes.push(SomeEllipse);
                 SomeEllipse.drawRaster(r);
 
