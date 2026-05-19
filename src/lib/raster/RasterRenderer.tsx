@@ -698,7 +698,7 @@ export class Ellipse extends Shape {
             this.transformPointToDevice( this.rx,  this.ry),
             this.transformPointToDevice( this.rx, -this.ry)
         ]
-        var bounds: Bounds ={
+        var bounds: Bounds = {
             minX: Math.min(points[0].x, points[1].x, points[2].x, points[3].x),
             minY: Math.min(points[0].y, points[1].y, points[2].y, points[3].y),
             maxX: Math.max(points[0].x, points[1].x, points[2].x, points[3].x),
@@ -748,6 +748,127 @@ export class Ellipse extends Shape {
 
         let rectPropsJson = JSON.stringify(rectProps);
         return rectPropsJson;   
+    }
+}
+
+export class Triangle extends Shape {
+    constructor(public x1: number, public y1: number,
+                public x2: number, public y2: number,
+                public x3: number, public y3: number) {
+        super();
+    }
+    
+    drawRaster(r: RasterRenderer): void {
+        const cx = (this.x1 + this.x2 + this.x3)/3;
+        const cy = (this.y1 + this.y2 + this.y3)/3;
+        let points = [
+            this.transformPointToDevice(this.x1-cx, this.y1-cy),
+            this.transformPointToDevice(this.x2-cx, this.y2-cy),
+            this.transformPointToDevice(this.x3-cx, this.y3-cy),
+        ];
+        
+        let fillColor: RGBA = hexToRGBA(this.fillStyle);
+        fillColor.a = this.fillOpacity;
+        let strokeColor: RGBA = hexToRGBA(this.strokeStyle);
+        strokeColor.a = this.strokeOpacity;
+
+        r.strokePolygon(points, strokeColor, this.strokeWidth);
+        r.fillPolygon(points, fillColor)
+        // throw new Error("Not implemented yet");
+    }
+
+    hitTest(px: number, py: number): boolean {
+        let localPoint = this.transformPointToLocal(px, py);
+
+        if (localPoint == null)
+            return false;
+
+        const cx = (this.x1 + this.x2 + this.x3)/3;
+        const cy = (this.y1 + this.y2 + this.y3)/3;
+
+        const ap: Point2D = {x: localPoint.x-(this.x1-cx), y: localPoint.y-(this.y1-cy)};
+        const bp: Point2D = {x: localPoint.x-(this.x2-cx), y: localPoint.y-(this.y2-cy)};
+        const cp: Point2D = {x: localPoint.x-(this.x3-cx), y: localPoint.y-(this.y3-cy)};
+
+        const ab: Point2D = {x: this.x2-this.x1, y: this.y2-this.y1};
+        const bc: Point2D = {x: this.x3-this.x2, y: this.y3-this.y2};
+        const ca: Point2D = {x: this.x1-this.x3, y: this.y1-this.y3};
+
+        const first = ab.x*ap.y - ab.y*ap.x;
+        const second = bc.x*bp.y - bc.y*bp.x;
+        const third = ca.x*cp.y - ca.y*cp.x;
+
+        if (first > 0 && second > 0 && third > 0){
+            alert("Success!");
+            return true;
+        }
+        else if (first < 0 && second < 0 && third < 0){
+            alert("Success!");
+            return true;
+        }
+        else
+            return false;
+        // throw new Error("Not implemented yet");
+    }
+
+    getCenter(): Point2D {
+        const center: Point2D = {x: this.transform.x, y: this.transform.y};
+        return center;
+        // throw new Error("Local getCenter called!");
+    }
+
+    getBounds(): Bounds {
+        const cx = (this.x1 + this.x2 + this.x3)/3;
+        const cy = (this.y1 + this.y2 + this.y3)/3;
+        let globalPoints = [
+            this.transformPointToDevice(this.x1-cx, this.y1-cx),
+            this.transformPointToDevice(this.x2-cx, this.y2-cy),
+            this.transformPointToDevice(this.x3-cx, this.y3-cy),
+        ];
+        let bounds: Bounds = {
+            minX: Math.min(globalPoints[0].x, globalPoints[1].x, globalPoints[2].x),
+            minY: Math.min(globalPoints[0].y, globalPoints[1].y, globalPoints[2].y),
+            maxX: Math.max(globalPoints[0].x, globalPoints[1].x, globalPoints[2].x),
+            maxY: Math.max(globalPoints[0].y, globalPoints[1].y, globalPoints[2].y)
+        }
+        return bounds;
+        // throw new Error("Not implemented yet");
+    }
+
+    getLocalBounds(): Bounds {
+        let bounds: Bounds = {
+            minX: Math.min(this.x1, this.x2, this.x3),
+            minY: Math.max(this.y1, this.y2, this.y3),
+            maxX: Math.min(this.x1, this.x2, this.x3),
+            maxY: Math.max(this.y1, this.y2, this.y3),
+        }
+        return bounds;
+        // throw new Error("Not implemented yet");
+    }
+
+    toJSON(): string {
+        let triangleProps = {
+            id: this.id,
+            point1: {x: this.x1, y: this.y1},
+            point2: {x: this.x1, y: this.y1},
+            point3: {x: this.x1, y: this.y1},
+            transform: {
+                x: this.transform.x,
+                y: this.transform.y,
+                rotation: this.transform.rotation,
+                scaleX: this.transform.scaleX,
+                scaleY: this.transform.scaleY
+            },
+            fillStyle: this.fillStyle,
+            fillOpacity: this.fillOpacity,
+            strokeStyle: this.strokeStyle,
+            strokeWidth: this.strokeWidth,
+            strokeOpacity: this.strokeOpacity
+        }
+
+        let trianglePropsJson = JSON.stringify(triangleProps);
+        return trianglePropsJson;
+        // throw new Error("Not implemented yet");
     }
 }
 
@@ -826,7 +947,7 @@ export const CanvasScene = ({ shapes, lineAlg }: CanvasSceneProps) => {
                 shapes.push(SomeRect);
                 SomeRect.drawRaster(r);
 
-                let SomeLine: Shape = new Line(0, 0, 100, 120, 15);
+                let SomeLine: Shape = new Line(0, 0, 100, 120, 30);
                 // SomeLine.transform.rotation = 0;
                 SomeLine.transform.y = 200;
                 SomeLine.transform.x = 200;
@@ -843,9 +964,18 @@ export const CanvasScene = ({ shapes, lineAlg }: CanvasSceneProps) => {
                 SomeClone.transform.x += 100;
                 SomeClone.transform.y += 100;
                 SomeClone.drawRaster(r);
-                
-                r.fillCircle(SomeRect.getCenter().x, SomeRect.getCenter().y, 5, {r:0, g:0, b:0, a:255});
 
+                let SomeTriangle: Shape = new Triangle(0, 0, 30, 100, 60, 15);
+                shapes.push(SomeTriangle);
+                SomeTriangle.transform.x = 500; SomeTriangle.transform.y = 500;
+                SomeTriangle.transform.rotation = 0;
+                // alert(SomeTriangle.getCenter().x + ", " + SomeTriangle.getCenter().y);
+                SomeTriangle.drawRaster(r);
+
+                let TriClone = SomeTriangle.clone();
+                TriClone.transform.x += 100;
+                TriClone.transform.y += 100;
+                TriClone.drawRaster(r);
                 r.commit(); // Вывести на экран
             }
             raf = requestAnimationFrame(frame);
