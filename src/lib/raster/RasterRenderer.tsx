@@ -882,37 +882,121 @@ export class QuadraticBezier extends Shape {
     }
 
     drawRaster(r: RasterRenderer): void {
-        const points: Point2D[] = [];
-
-        let fillColor: RGBA = hexToRGBA(this.fillStyle);
-        fillColor.a = this.fillOpacity;
         let strokeColor: RGBA = hexToRGBA(this.strokeStyle);
         strokeColor.a = this.strokeOpacity;
         this.strokeWidth = this.width;
+        //Рекурсивный алгоритм де Кастельжо для разбиения кривой на отрезки
+        const tolerance = 0.5;
+        let prevPoint: Point2D | null = null;
 
-        for (let t = 0; t < 1; t+= 1/30){
-            const point: Point2D = {
-                x: (1-t)*(1-t)*this.p0x + 2*(1-t)*t*this.p1x + t*t*this.p2x,
-                y: (1-t)*(1-t)*this.p0y + 2*(1-t)*t*this.p1y + t*t*this.p2y
-            }
-            var BezierPoint = this.transformPointToDevice(point.x, point.y);
-            points.push(BezierPoint);
-            if (points.length > 1){
-                r.strokeLine(
-                    points[points.length-1].x,
-                    points[points.length-1].y,
-                    points[points.length-2].x,
-                    points[points.length-2].y,
-                    strokeColor,
-                    this.strokeWidth
-                )
+        const sample = (
+            x1: number, y1: number,
+            x2: number, y2: number,
+            x3: number, y3: number
+        ) => {
+            const xmid12 = (x1 + x2)/2;
+            const ymid12 = (y1 + y2)/2;
+            const xmid23 = (x2 + x3)/2;
+            const ymid23 = (y2 + y3)/2;
+
+            const x_curve = (xmid12 + xmid23)/2;
+            const y_curve = (ymid12 + ymid23)/2;
+
+            const dx = (x3-x1);
+            const dy = (y3-y1);
+
+            const d = Math.abs((y1 - y3) * x_curve + (x3 - x1) * y_curve + (x1 * y3 - x3 * y1)) / Math.sqrt(dx * dx + dy * dy);
+            const segmentLengthSqr = dx * dx + dy * dy;
+
+            if (d > tolerance && segmentLengthSqr > 1) {
+                sample(x1, y1, xmid12, ymid12, x_curve, y_curve);
+                sample(x_curve, y_curve, xmid23, ymid23, x3, y3);
+            } else {
+                const devicePoint = this.transformPointToDevice(x3, y3);
+
+                if (prevPoint != null) {
+                    r.strokeLine(prevPoint.x, prevPoint.y, devicePoint.x, devicePoint.y, strokeColor, this.strokeWidth);
+                }
+                
+                prevPoint = devicePoint;
             }
         }
+        
+        prevPoint = this.transformPointToDevice(this.p0x, this.p0y);
+        sample(this.p0x, this.p0y, this.p1x, this.p1y, this.p2x, this.p2y);
         // throw new Error("Not implemented yet");
     }
 
     hitTest(px: number, py: number): boolean {
-        throw new Error("Not implemented yet");
+        let localPoint = this.transformPointToLocal(px, py);
+        const ClickPadding = 5;
+
+        const minX = Math.min(this.p0x, this.p1x, this.p2x) - ClickPadding;
+        const minY = Math.min(this.p0y, this.p1y, this.p2y) + ClickPadding;
+        const maxX = Math.max(this.p0x, this.p1x, this.p2x) - ClickPadding;
+        const maxY = Math.max(this.p0y, this.p1y, this.p2y) + ClickPadding;
+
+        if (localPoint == null)
+            return false;
+
+        if (localPoint.x < minX || localPoint.x > maxX || localPoint.y < minY || localPoint.y > maxY){
+            return false;
+        }
+        //Вновь алгоритм де Кастельжо
+        const tolerance = 1.5;
+        let prevPoint: Point2D = {x: this.p0x, y: this.p0y};
+        //Вспомогательная функция подсчёта расстояния
+        const distanceToSegment = (x1: number, y1: number, x2: number, y2: number): number => {
+            const dx = x2 - x1;
+            const dy = y2 - y1;
+            const l2 = dx * dx + dy * dy;
+            if (l2 === 0) return Math.sqrt((localPoint.x - x1) ** 2 + (localPoint.y - y1) ** 2);
+        
+            // Проекция точки клика на вектор отрезка
+            let t = ((localPoint.x - x1) * dx + (localPoint.y - y1) * dy) / l2;
+            t = Math.max(0, Math.min(1, t)); // Ограничиваем концами отрезка
+        
+            const projX = x1 + t * dx;
+            const projY = y1 + t * dy;
+            return Math.sqrt((localPoint.x - projX) ** 2 + (localPoint.y - projY) ** 2);
+        };
+
+        const sample = (
+            x1: number, y1: number,
+            x2: number, y2: number,
+            x3: number, y3: number
+        ): boolean => {
+            const xmid12 = (x1 + x2)/2;
+            const ymid12 = (y1 + y2)/2;
+            const xmid23 = (x2 + x3)/2;
+            const ymid23 = (y2 + y3)/2;
+
+            const x_curve = (xmid12 + xmid23)/2;
+            const y_curve = (ymid12 + ymid23)/2;
+
+            const dx = (x3-x1);
+            const dy = (y3-y1);
+
+            const dLine = Math.sqrt(dx*dx + dy*dy);
+            let d = 0;
+            if (dLine > 0.001){
+                d = Math.abs((y1 - y3)* x_curve + (x3 - x1) * y_curve + (x1 * y3 - x3 * y1)) / dLine;
+            }
+            const segmentLengthSqr = dx * dx + dy * dy;
+
+            if (d > tolerance && segmentLengthSqr > 1) {
+                if (sample(x1, y1, xmid12, ymid12, x_curve, y_curve)) {
+                    return true;
+                };
+                return sample(x_curve, y_curve, xmid23, ymid23, x3, y3);
+            } else {
+                const dist = distanceToSegment(prevPoint.x, prevPoint.y, x3, y3)
+                prevPoint = {x: x3, y: y3};
+                return dist <= (this.width/2 + ClickPadding);
+            }
+        };
+        return sample(this.p0x, this.p0y, this.p1x, this.p1y, this.p2x, this. p2y);
+        // throw new Error("Not implemented yet");
     }
 
     getBounds(): Bounds {
@@ -924,7 +1008,28 @@ export class QuadraticBezier extends Shape {
     }
 
     toJSON(): string {
-        throw new Error("Not implemented yet");
+        let curveProps = {
+            id: this.id,
+            p0: {x: this.p0x, y: this.p0y},
+            p1: {x: this.p1x, y: this.p1y},
+            p2: {x: this.p2x, y: this.p2y},
+            transform: {
+                x: this.transform.x,
+                y: this.transform.y,
+                rotation: this.transform.rotation,
+                scaleX: this.transform.scaleX,
+                scaleY: this.transform.scaleY
+            },
+            fillStyle: this.fillStyle,
+            fillOpacity: this.fillOpacity,
+            strokeStyle: this.strokeStyle,
+            strokeWidth: this.strokeWidth,
+            strokeOpacity: this.strokeOpacity
+        }
+
+        let curvePropsJSON = JSON.stringify(curveProps);
+        return curvePropsJSON;
+        // throw new Error("Not implemented yet");
     }
 }
 
@@ -939,11 +1044,147 @@ export class CubicBezier extends Shape {
     }
 
     drawRaster(r: RasterRenderer): void {
-        throw new Error("Not implemented yet");
+        let strokeColor: RGBA = hexToRGBA(this.strokeStyle);
+        strokeColor.a = this.strokeOpacity;
+        this.strokeWidth = this.width;
+        //Рекурсивный алгоритм де Кастельжо для разбиения кривой на отрезки
+        const tolerance = 0.5;
+        let prevPoint: Point2D | null = null;
+
+        const sample = (
+            x1: number, y1: number,
+            x2: number, y2: number,
+            x3: number, y3: number,
+            x4: number, y4: number,
+        ) => {
+            const xmid12 = (x1 + x2)/2;
+            const ymid12 = (y1 + y2)/2;
+            const xmid23 = (x2 + x3)/2;
+            const ymid23 = (y2 + y3)/2;
+            const xmid34 = (x3 + x4)/2;
+            const ymid34 = (y3 + y4)/2;
+
+            const xmid123 = (xmid12 + xmid23) / 2;
+            const ymid123 = (ymid12 + ymid23) / 2;
+            const xmid234 = (xmid23 + xmid34) / 2;
+            const ymid234 = (ymid23 + ymid34) / 2;
+
+            const x_curve = (xmid123 + xmid234)/2;
+            const y_curve = (ymid123 + ymid234)/2;
+
+            const dx = (x4-x1);
+            const dy = (y4-y1);
+            const dLine = Math.sqrt(dx*dx + dy*dy);
+
+            let d1 = 0;
+            let d2 = 0;
+
+            if (dLine > 0.001){
+                d1 = Math.abs((y1 - y4) * x2 + (x4 - x1) * y2 + (x1 * y4 - x4 * y1)) / dLine;
+                d2 = Math.abs((y1 - y4) * x3 + (x4 - x1) * y3 + (x1 * y4 - x4 * y1)) / dLine;
+            }
+
+            const segmentLengthSqr = dx * dx + dy * dy;
+
+            if ((d1 > tolerance || d2 > tolerance) && segmentLengthSqr > 1) {
+                sample(x1, y1, xmid12, ymid12, xmid123, ymid123, x_curve, y_curve);
+                sample(x_curve, y_curve, xmid234, ymid234, xmid34, ymid34, x4, y4);
+            } else {
+                const devicePoint = this.transformPointToDevice(x4, y4);
+
+                if (prevPoint != null) {
+                    r.strokeLine(prevPoint.x, prevPoint.y, devicePoint.x, devicePoint.y, strokeColor, this.strokeWidth);
+                }
+                
+                prevPoint = devicePoint;
+            }
+        }
+        
+        prevPoint = this.transformPointToDevice(this.p0x, this.p0y);
+        sample(this.p0x, this.p0y, this.p1x, this.p1y, this.p2x, this.p2y, this.p3x, this.p3y);
+        // throw new Error("Not implemented yet");
     }
 
     hitTest(px: number, py: number): boolean {
-        throw new Error("Not implemented yet");
+        let localPoint = this.transformPointToLocal(px, py);
+        const ClickPadding = 5;
+
+        const minX = Math.min(this.p0x, this.p1x, this.p2x, this.p3x) - ClickPadding;
+        const minY = Math.min(this.p0y, this.p1y, this.p2y, this.p3y) + ClickPadding;
+        const maxX = Math.max(this.p0x, this.p1x, this.p2x, this.p3x) - ClickPadding;
+        const maxY = Math.max(this.p0y, this.p1y, this.p2y, this.p3y) + ClickPadding;
+
+        if (localPoint == null)
+            return false;
+
+        if (localPoint.x < minX || localPoint.x > maxX || localPoint.y < minY || localPoint.y > maxY){
+            return false;
+        }
+        //Вновь алгоритм де Кастельжо
+        const tolerance = 1.5;
+        let prevPoint: Point2D = {x: this.p0x, y: this.p0y};
+        //Вспомогательная функция подсчёта расстояния
+        const distanceToSegment = (x1: number, y1: number, x2: number, y2: number): number => {
+            const dx = x2 - x1;
+            const dy = y2 - y1;
+            const l2 = dx * dx + dy * dy;
+            if (l2 === 0) return Math.sqrt((localPoint.x - x1) ** 2 + (localPoint.y - y1) ** 2);
+        
+            // Проекция точки клика на вектор отрезка
+            let t = ((localPoint.x - x1) * dx + (localPoint.y - y1) * dy) / l2;
+            t = Math.max(0, Math.min(1, t)); // Ограничиваем концами отрезка
+        
+            const projX = x1 + t * dx;
+            const projY = y1 + t * dy;
+            return Math.sqrt((localPoint.x - projX) ** 2 + (localPoint.y - projY) ** 2);
+        };
+
+        const sample = (
+            x1: number, y1: number,
+            x2: number, y2: number,
+            x3: number, y3: number,
+            x4: number, y4: number
+        ): boolean => {
+            const xmid12 = (x1 + x2)/2;
+            const ymid12 = (y1 + y2)/2;
+            const xmid23 = (x2 + x3)/2;
+            const ymid23 = (y2 + y3)/2;
+            const xmid34 = (x3 + x4)/2;
+            const ymid34 = (y3 + y4)/2;
+
+            const xmid123 = (xmid12 + xmid23) / 2;
+            const ymid123 = (ymid12 + ymid23) / 2;
+            const xmid234 = (xmid23 + xmid34) / 2;
+            const ymid234 = (ymid23 + ymid34) / 2;
+
+            const x_curve = (xmid123 + xmid234)/2;
+            const y_curve = (ymid123 + ymid234)/2;
+
+            const dx = (x4-x1);
+            const dy = (y4-y1);
+            const dLine = Math.sqrt(dx*dx + dy*dy);
+
+            let d1 = 0; let d2 = 0;
+            if (dLine > 0.001){
+                d1 = Math.abs((y1 - y4)* x2 + (x4 - x1) * x2 + (x1 * y4 - x4 * y1)) / dLine;
+                d2 = Math.abs((y1 - y4)* x3 + (x4 - x1) * x3 + (x1 * y4 - x4 * y1)) / dLine;
+            }
+            const segmentLengthSqr = dx * dx + dy * dy;
+
+            if ((d1 > tolerance || d2 > tolerance) && segmentLengthSqr > 1) {
+                if (sample(x1, y1, xmid12, ymid12, xmid123, ymid123, x_curve, y_curve)) {
+                    return true;
+                };
+                return sample(x_curve, y_curve, xmid234, ymid234, xmid34, ymid34, x3, y3);
+            } else {
+                const dist = distanceToSegment(prevPoint.x, prevPoint.y, x4, y4)
+                prevPoint = {x: x4, y: y4};
+                return dist <= (this.width/2 + ClickPadding);
+            }
+        };
+        console.log(sample(this.p0x, this.p0y, this.p1x, this.p1y, this.p2x, this.p2y, this.p3x, this.p3y));
+        return sample(this.p0x, this.p0y, this.p1x, this.p1y, this.p2x, this.p2y, this.p3x, this.p3y);
+        // throw new Error("Not implemented yet");
     }
 
     getBounds(): Bounds {
@@ -955,7 +1196,29 @@ export class CubicBezier extends Shape {
     }
 
     toJSON(): string {
-        throw new Error("Not implemented yet");
+        let curveProps = {
+            id: this.id,
+            p0: {x: this.p0x, y: this.p0y},
+            p1: {x: this.p1x, y: this.p1y},
+            p2: {x: this.p2x, y: this.p2y},
+            p3: {x: this.p3x, y: this.p3y},
+            transform: {
+                x: this.transform.x,
+                y: this.transform.y,
+                rotation: this.transform.rotation,
+                scaleX: this.transform.scaleX,
+                scaleY: this.transform.scaleY
+            },
+            fillStyle: this.fillStyle,
+            fillOpacity: this.fillOpacity,
+            strokeStyle: this.strokeStyle,
+            strokeWidth: this.strokeWidth,
+            strokeOpacity: this.strokeOpacity
+        }
+
+        let curvePropsJSON = JSON.stringify(curveProps);
+        return curvePropsJSON;
+        // throw new Error("Not implemented yet");
     }
 }
 
@@ -1067,7 +1330,13 @@ export const CanvasScene = ({ shapes, lineAlg }: CanvasSceneProps) => {
                 let SomeBezier: Shape = new QuadraticBezier(0, 0, 30, -100, 100, 0, 5);
                 SomeBezier.transform.y += 100;
                 SomeBezier.transform.x -= 150;
+                shapes.push(SomeBezier);
                 SomeBezier.drawRaster(r);
+
+                let SomeQBezier: Shape = new CubicBezier(0, 0, 30, -100, 100, 100, 150, 0, 5);
+                SomeQBezier.transform.x += 200; 
+                shapes.push(SomeQBezier);
+                SomeQBezier.drawRaster(r);
                 r.commit(); // Вывести на экран
             }
             raf = requestAnimationFrame(frame);
