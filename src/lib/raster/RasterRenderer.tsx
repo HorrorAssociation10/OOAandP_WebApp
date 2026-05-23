@@ -872,6 +872,93 @@ export class Triangle extends Shape {
     }
 }
 
+export class QuadraticBezier extends Shape {
+    constructor (public p0x: number, public p0y: number,
+                 public p1x: number, public p1y: number,
+                 public p2x: number, public p2y: number,
+                 public width: number = 1)
+    {
+        super();
+    }
+
+    drawRaster(r: RasterRenderer): void {
+        const points: Point2D[] = [];
+
+        let fillColor: RGBA = hexToRGBA(this.fillStyle);
+        fillColor.a = this.fillOpacity;
+        let strokeColor: RGBA = hexToRGBA(this.strokeStyle);
+        strokeColor.a = this.strokeOpacity;
+        this.strokeWidth = this.width;
+
+        for (let t = 0; t < 1; t+= 1/30){
+            const point: Point2D = {
+                x: (1-t)*(1-t)*this.p0x + 2*(1-t)*t*this.p1x + t*t*this.p2x,
+                y: (1-t)*(1-t)*this.p0y + 2*(1-t)*t*this.p1y + t*t*this.p2y
+            }
+            var BezierPoint = this.transformPointToDevice(point.x, point.y);
+            points.push(BezierPoint);
+            if (points.length > 1){
+                r.strokeLine(
+                    points[points.length-1].x,
+                    points[points.length-1].y,
+                    points[points.length-2].x,
+                    points[points.length-2].y,
+                    strokeColor,
+                    this.strokeWidth
+                )
+            }
+        }
+        // throw new Error("Not implemented yet");
+    }
+
+    hitTest(px: number, py: number): boolean {
+        throw new Error("Not implemented yet");
+    }
+
+    getBounds(): Bounds {
+        throw new Error("Not implemented yet");
+    }
+
+    getLocalBounds(): Bounds {
+        throw new Error("Not implemented yet");
+    }
+
+    toJSON(): string {
+        throw new Error("Not implemented yet");
+    }
+}
+
+export class CubicBezier extends Shape {
+    constructor (public p0x: number, public p0y: number,
+                 public p1x: number, public p1y: number,
+                 public p2x: number, public p2y: number,
+                 public p3x: number, public p3y: number,
+                 public width: number = 1)
+    {
+        super();
+    }
+
+    drawRaster(r: RasterRenderer): void {
+        throw new Error("Not implemented yet");
+    }
+
+    hitTest(px: number, py: number): boolean {
+        throw new Error("Not implemented yet");
+    }
+
+    getBounds(): Bounds {
+        throw new Error("Not implemented yet");
+    }
+
+    getLocalBounds(): Bounds {
+        throw new Error("Not implemented yet");
+    }
+
+    toJSON(): string {
+        throw new Error("Not implemented yet");
+    }
+}
+
 interface CanvasSceneProps {
     shapes: Shape[];
     // selectedId: string | null;
@@ -976,6 +1063,11 @@ export const CanvasScene = ({ shapes, lineAlg }: CanvasSceneProps) => {
                 TriClone.transform.x += 100;
                 TriClone.transform.y += 100;
                 TriClone.drawRaster(r);
+
+                let SomeBezier: Shape = new QuadraticBezier(0, 0, 30, -100, 100, 0, 5);
+                SomeBezier.transform.y += 100;
+                SomeBezier.transform.x -= 150;
+                SomeBezier.drawRaster(r);
                 r.commit(); // Вывести на экран
             }
             raf = requestAnimationFrame(frame);
