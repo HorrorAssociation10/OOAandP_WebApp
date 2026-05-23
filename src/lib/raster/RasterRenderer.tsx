@@ -1000,11 +1000,62 @@ export class QuadraticBezier extends Shape {
     }
 
     getBounds(): Bounds {
-        throw new Error("Not implemented yet");
+        let minX = Number.MAX_SAFE_INTEGER; let minY = Number.MAX_SAFE_INTEGER;
+        let maxX = Number.MIN_SAFE_INTEGER; let maxY = Number.MIN_SAFE_INTEGER;
+        for (let t = 0; t<1; t+=0.05){
+            let point: Point2D = {
+                x: (1-t)*(1-t)*this.p0x + 2*(1-t)*t*this.p1x + t*t*this.p2x,
+                y: (1-t)*(1-t)*this.p0y + 2*(1-t)*t*this.p1y + t*t*this.p2y
+            };
+            let devicePoint = this.transformPointToDevice(point.x, point.y);
+            if (devicePoint.x < minX)
+                minX = devicePoint.x;
+            if (devicePoint.y < minY)
+                minY = devicePoint.y;
+            if (devicePoint.x > maxX)
+                maxX = devicePoint.x;
+            if (devicePoint.y > maxY)
+                maxY = devicePoint.y;
+        }
+
+        const bounds: Bounds = {
+            minX: minX,
+            minY: minY,
+            maxX: maxX,
+            maxY: maxY
+        }
+
+        return bounds;
+        // throw new Error("Not implemented yet");
     }
 
     getLocalBounds(): Bounds {
-        throw new Error("Not implemented yet");
+        let minX = Number.MAX_SAFE_INTEGER; let minY = Number.MAX_SAFE_INTEGER;
+        let maxX = Number.MIN_SAFE_INTEGER; let maxY = Number.MIN_SAFE_INTEGER;
+        for (let t = 0; t<1; t+=0.05){
+            let point: Point2D = {
+                x: (1-t)*(1-t)*this.p0x + 2*(1-t)*t*this.p1x + t*t*this.p2x,
+                y: (1-t)*(1-t)*this.p0y + 2*(1-t)*t*this.p1y + t*t*this.p2y
+            };
+            if (point.x < minX)
+                minX = point.x;
+            if (point.y < minY)
+                minY = point.y;
+            if (point.x > maxX)
+                maxX = point.x;
+            if (point.y > maxY)
+                maxY = point.y;
+        }
+
+        const bounds: Bounds = {
+            minX: minX,
+            minY: minY,
+            maxX: maxX,
+            maxY: maxY
+        }
+
+        return bounds;
+        // throw new Error("Not implemented yet");
     }
 
     toJSON(): string {
@@ -1188,11 +1239,62 @@ export class CubicBezier extends Shape {
     }
 
     getBounds(): Bounds {
-        throw new Error("Not implemented yet");
+        let minX = Number.MAX_SAFE_INTEGER; let minY = Number.MAX_SAFE_INTEGER;
+        let maxX = Number.MIN_SAFE_INTEGER; let maxY = Number.MIN_SAFE_INTEGER;
+        for (let t = 0; t<1; t+=0.05){
+            let point: Point2D = {
+                x: (1-t)*(1-t)*(1-t)*this.p0x + 3*(1-t)*(1-t)*t*this.p1x + 3*(1-t)*t*t*this.p2x + t*t*t*this.p3x,
+                y: (1-t)*(1-t)*(1-t)*this.p0y + 3*(1-t)*(1-t)*t*this.p1y + 3*(1-t)*t*t*this.p2y + t*t*t*this.p3y
+            };
+            let devicePoint = this.transformPointToDevice(point.x, point.y);
+            if (devicePoint.x < minX)
+                minX = devicePoint.x;
+            if (devicePoint.y < minY)
+                minY = devicePoint.y;
+            if (devicePoint.x > maxX)
+                maxX = devicePoint.x;
+            if (devicePoint.y > maxY)
+                maxY = devicePoint.y;
+        }
+
+        const bounds: Bounds = {
+            minX: minX,
+            minY: minY,
+            maxX: maxX,
+            maxY: maxY
+        }
+
+        return bounds;
+        // throw new Error("Not implemented yet");
     }
 
     getLocalBounds(): Bounds {
-        throw new Error("Not implemented yet");
+        let minX = Number.MAX_SAFE_INTEGER; let minY = Number.MAX_SAFE_INTEGER;
+        let maxX = Number.MIN_SAFE_INTEGER; let maxY = Number.MIN_SAFE_INTEGER;
+        for (let t = 0; t<1; t+=0.05){
+            let point: Point2D = {
+                x: (1-t)*(1-t)*(1-t)*this.p0x + 3*(1-t)*(1-t)*t*this.p1x + 3*(1-t)*t*t*this.p2x + t*t*t*this.p3x,
+                y: (1-t)*(1-t)*(1-t)*this.p0y + 3*(1-t)*(1-t)*t*this.p1y + 3*(1-t)*t*t*this.p2y + t*t*t*this.p3y
+            };
+            if (point.x < minX)
+                minX = point.x;
+            if (point.y < minY)
+                minY = point.y;
+            if (point.x > maxX)
+                maxX = point.x;
+            if (point.y > maxY)
+                maxY = point.y;
+        }
+
+        const bounds: Bounds = {
+            minX: minX,
+            minY: minY,
+            maxX: maxX,
+            maxY: maxY
+        }
+
+        return bounds;
+        // throw new Error("Not implemented yet");
     }
 
     toJSON(): string {
@@ -1219,6 +1321,35 @@ export class CubicBezier extends Shape {
         let curvePropsJSON = JSON.stringify(curveProps);
         return curvePropsJSON;
         // throw new Error("Not implemented yet");
+    }
+}
+
+export type PathBezierMode = 'polyline' | 'bezier' | 'catmull';
+export class PathBezier extends Shape {
+    constructor (public points: Point2D[],
+        public mode: PathBezierMode,
+        public closed: boolean) {
+        super();
+    }
+
+    drawRaster(r: RasterRenderer): void {
+        throw new Error("Not implemented yet");
+    }
+
+    hitTest(px: number, py: number): boolean {
+        throw new Error("Not implemented yet");
+    }
+
+    getBounds(): Bounds {
+        throw new Error("Not implemented yet");
+    }
+
+    getLocalBounds(): Bounds {
+        throw new Error("Not implemented yet");
+    }
+
+    toJSON(): string {
+        throw new Error("Not implemented yet");
     }
 }
 
@@ -1299,15 +1430,17 @@ export const CanvasScene = ({ shapes, lineAlg }: CanvasSceneProps) => {
 
                 let SomeLine: Shape = new Line(0, 0, 100, 120, 30);
                 // SomeLine.transform.rotation = 0;
-                SomeLine.transform.y = 200;
-                SomeLine.transform.x = 200;
+                SomeLine.transform.y = 100;
+                SomeLine.transform.x = 100;
+                SomeLine.transform.rotation = 2.4
                 SomeLine.fillStyle = "#d31486";
                 shapes.push(SomeLine);
                 SomeLine.drawRaster(r);
 
                 let SomeEllipse: Shape = new Ellipse(800, 200, 60, 60);
-                SomeEllipse.transform.rotation = 0;
                 shapes.push(SomeEllipse);
+                SomeEllipse.transform.x = 900;
+                SomeEllipse.transform.y = 100;
                 SomeEllipse.drawRaster(r);
 
                 let SomeClone = SomeRect.clone();
@@ -1317,26 +1450,29 @@ export const CanvasScene = ({ shapes, lineAlg }: CanvasSceneProps) => {
 
                 let SomeTriangle: Shape = new Triangle(0, 0, 30, 100, 60, 15);
                 shapes.push(SomeTriangle);
-                SomeTriangle.transform.x = 500; SomeTriangle.transform.y = 500;
-                SomeTriangle.transform.rotation = 0;
-                // alert(SomeTriangle.getCenter().x + ", " + SomeTriangle.getCenter().y);
+                SomeTriangle.transform.x = 600; SomeTriangle.transform.y = 500;
                 SomeTriangle.drawRaster(r);
 
                 let TriClone = SomeTriangle.clone();
-                TriClone.transform.x += 100;
-                TriClone.transform.y += 100;
+                TriClone.transform.x += 200;
+                TriClone.transform.y += 50;
                 TriClone.drawRaster(r);
 
-                let SomeBezier: Shape = new QuadraticBezier(0, 0, 30, -100, 100, 0, 5);
+                let SomeBezier: Shape = new QuadraticBezier(0, 0, 30, -100, 100, 0, 2);
                 SomeBezier.transform.y += 100;
                 SomeBezier.transform.x -= 150;
                 shapes.push(SomeBezier);
                 SomeBezier.drawRaster(r);
 
-                let SomeQBezier: Shape = new CubicBezier(0, 0, 30, -100, 100, 100, 150, 0, 5);
+                let SomeQBezier: Shape = new CubicBezier(0, 0, 30, -100, 100, 100, 150, 0, 2);
                 SomeQBezier.transform.x += 200; 
                 shapes.push(SomeQBezier);
                 SomeQBezier.drawRaster(r);
+
+                // let SomeBound: Shape = new Rect(SomeQBezier.getBounds().maxX-SomeQBezier.getBounds().minX, SomeQBezier.getBounds().maxY-SomeQBezier.getBounds().minY);
+                // SomeBound.transform.x = SomeQBezier.getCenter().x;
+                // SomeBound.transform.y = SomeQBezier.getCenter().y;
+                // SomeBound.drawRaster(r);
                 r.commit(); // Вывести на экран
             }
             raf = requestAnimationFrame(frame);
