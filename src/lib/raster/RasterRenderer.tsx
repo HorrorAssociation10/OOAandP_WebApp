@@ -932,8 +932,8 @@ export class QuadraticBezier extends Shape {
         const ClickPadding = 5;
 
         const minX = Math.min(this.p0x, this.p1x, this.p2x) - ClickPadding;
-        const minY = Math.min(this.p0y, this.p1y, this.p2y) + ClickPadding;
-        const maxX = Math.max(this.p0x, this.p1x, this.p2x) - ClickPadding;
+        const minY = Math.min(this.p0y, this.p1y, this.p2y) - ClickPadding;
+        const maxX = Math.max(this.p0x, this.p1x, this.p2x) + ClickPadding;
         const maxY = Math.max(this.p0y, this.p1y, this.p2y) + ClickPadding;
 
         if (localPoint == null)
@@ -1161,8 +1161,8 @@ export class CubicBezier extends Shape {
         const ClickPadding = 5;
 
         const minX = Math.min(this.p0x, this.p1x, this.p2x, this.p3x) - ClickPadding;
-        const minY = Math.min(this.p0y, this.p1y, this.p2y, this.p3y) + ClickPadding;
-        const maxX = Math.max(this.p0x, this.p1x, this.p2x, this.p3x) - ClickPadding;
+        const minY = Math.min(this.p0y, this.p1y, this.p2y, this.p3y) - ClickPadding;
+        const maxX = Math.max(this.p0x, this.p1x, this.p2x, this.p3x) + ClickPadding;
         const maxY = Math.max(this.p0y, this.p1y, this.p2y, this.p3y) + ClickPadding;
 
         if (localPoint == null)
@@ -1326,30 +1326,201 @@ export class CubicBezier extends Shape {
 
 export type PathBezierMode = 'polyline' | 'bezier' | 'catmull';
 export class PathBezier extends Shape {
-    constructor (public points: Point2D[],
+    constructor (
+        public points: Point2D[],
         public mode: PathBezierMode,
-        public closed: boolean) {
+        public closed: boolean,
+        public width: number = 1) {
         super();
+        this.strokeWidth = width;
+    }
+
+    private getSegemnts(toDevice: boolean): {p1: Point2D, p2: Point2D}[]{
+        const segments: {p1: Point2D, p2: Point2D}[] = [];
+        if (this.points.length < 2) return segments;
+
+        const pts = this.points.map( //Вероятно, и не пригодится
+            p => toDevice ? this.transformPointToDevice(p.x, p.y) : {x: p.x, y: p.y});
+        const count = pts.length;
+        const tolerance = 0.5;
+        //Отрезки из кубической Безье
+        const sampleCubic = (p0: Point2D, p1: Point2D, p2: Point2D, p3: Point2D) => {
+            const recurse = (x1: number, y1: number, x2: number, y2: number, x3: number, y3: number, x4: number, y4: number) => {
+                const xmid12 = (x1 + x2)/2;
+                const ymid12 = (y1 + y2)/2;
+                const xmid23 = (x2 + x3)/2;
+                const ymid23 = (y2 + y3)/2;
+                const xmid34 = (x3 + x4)/2;
+                const ymid34 = (y3 + y4)/2;
+
+                const xmid123 = (xmid12 + xmid23) / 2;
+                const ymid123 = (ymid12 + ymid23) / 2;
+                const xmid234 = (xmid23 + xmid34) / 2;
+                const ymid234 = (ymid23 + ymid34) / 2;
+
+                const x_curve = (xmid123 + xmid234)/2;
+                const y_curve = (ymid123 + ymid234)/2;
+
+                const dx = (x4-x1);
+                const dy = (y4-y1);
+                const segmentLengthSqr = dx * dx + dy * dy;
+                const d = Math.abs((y1 - y4) * x_curve + (x4 - x1) * y_curve + (x1 * y4 - x4 * y1)) / (Math.sqrt(dx * dx + dy * dy) || 1);
+
+                if (d > tolerance && segmentLengthSqr > 1){
+                    recurse(x1, y1, xmid12, ymid12, xmid123, ymid123, x_curve, y_curve);
+                    recurse(x_curve, y_curve, xmid234, ymid234, xmid34, ymid34, x4, y4);
+                } else {
+                    segments.push({p1: {x: x1, y: y1}, p2: {x: x4, y: y4}});
+                }
+            };
+            recurse(p0.x, p0.y, p1.x, p1.y, p2.x, p2.y, p3.x, p3.y);
+        };
+        //Отрезки из квадратичной Безье
+        const sampleQuadratic = (p0: Point2D, p1: Point2D, p2: Point2D) => {
+            const recurse = (x1: number, y1: number, x2: number, y2: number, x3: number, y3: number) => {
+                const xmid12 = (x1 + x2)/2;
+                const ymid12 = (y1 + y2)/2;
+                const xmid23 = (x2 + x3)/2;
+                const ymid23 = (y2 + y3)/2;
+
+                const x_curve = (xmid12 + xmid23)/2;
+                const y_curve = (ymid12 + ymid23)/2;
+
+                const dx = (x3-x1);
+                const dy = (y3-y1);
+                const segmentLengthSqr = dx * dx + dy * dy;
+                const d = Math.abs((y1 - y3)* x_curve + (x3 - x1) * y_curve + (x1 * y3 - x3 * y1)) / (Math.sqrt(dx * dx + dy * dy) || 1);
+
+                if (d > tolerance && segmentLengthSqr > 1) {
+                    recurse(x1, y1, xmid12, ymid12, x_curve, y_curve);
+                    recurse(x_curve, y_curve, xmid23, ymid23, x3, y3);
+                } else {
+                    segments.push({p1: {x: x1, y: y1}, p2: {x: x3, y: y3}});
+                }
+            };
+            recurse(p0.x, p0.y, p1.x, p1.y, p2.x, p2.y);
+        };
+        //Режимы отрисовки
+        if (this.mode == 'polyline') {
+            for (let i = 0; i<(this.closed ? count : count - 1); ++i) {
+                segments.push({p1: pts[i], p2: pts[(i+1) % count]});
+            }
+        }
+        else if (this.mode == 'bezier') {
+            for (let i = 0; i< count - 2; i += 2) {
+                sampleQuadratic(pts[i], pts[i+1], pts[i+2]);
+            }
+            if (this.closed && count > 2) {
+                sampleQuadratic(pts[count-1], pts[0], pts[1]);
+            }
+        }
+        else if (this.mode == 'catmull') {
+            for (let i = 0; i < (this.closed ? count : count - 1); ++i) {
+                const p0 = pts[this.closed ? (i-1+count) % count : Math.max(0, i - 1)];
+                const p1 = pts[i];
+                const p2 = pts[(i+1) % count];
+                const p3 = pts[this.closed ? (i+2) % count: Math.min(count - 1, i + 2)];
+
+                const cp1 = {x: p1.x + (p2.x - p0.x)/6, y: p1.y + (p2.y - p0.y)/6};
+                const cp2 = {x: p2.x - (p3.x - p1.x)/6, y: p2.y - (p3.y - p1.y)/6};
+                
+                sampleCubic(p1, cp1, cp2, p2);
+            }
+        }
+        return segments;
+        // throw new Error("Not implemented yet");
     }
 
     drawRaster(r: RasterRenderer): void {
-        throw new Error("Not implemented yet");
+        let strokeColor: RGBA = hexToRGBA(this.strokeStyle);
+        strokeColor.a = this.strokeOpacity;
+
+        const segments = this.getSegemnts(true);
+        for (const seg of segments) {
+            r.strokeLine(seg.p1.x, seg.p1.y,seg.p2.x, seg.p2.y, strokeColor, this.strokeWidth);
+        }
+        // throw new Error("Not implemented yet");
     }
 
     hitTest(px: number, py: number): boolean {
-        throw new Error("Not implemented yet");
+        let localPoint = this.transformPointToDevice(px, py);
+        if (!localPoint) return false;
+
+        const ClickPadding = 5;
+        const segments = this.getSegemnts(false);
+        const distanceToSegment = (p1: Point2D, p2: Point2D, pt: Point2D): number => {
+            const dx = p2.x - p1.x;
+            const dy = p2.y - p1.y;
+            const l2 = dx*dx + dy*dy;
+            if (l2 == 0)
+                return Math.sqrt((pt.x = p1.x) ** 2 + (pt.y - p1.y) ** 2);
+
+            let t = ((pt.x - p1.x) * dx + (pt.y - p1.y) * dy) / l2;
+            t = Math.max(0, Math.min(1, t));
+            return Math.sqrt((pt.x - (p1.x + t * dx)) ** 2 + (pt.y - (p1.y + t * dy)) ** 2);
+        }
+
+        for (const seg of segments) {
+            if (distanceToSegment(seg.p1, seg.p2, localPoint) <= (this.width / 2 + ClickPadding)){
+                return true;
+            }
+        }
+        return false;
+        // throw new Error("Not implemented yet");
+    }
+
+    private calculateBounds(toDevice: boolean): Bounds {
+        if (this.points.length == 0) {
+            return {minX: 0, minY: 0, maxX: 0, maxY: 0};
+        }
+
+        let minX = Number.MAX_SAFE_INTEGER; let minY = Number.MAX_SAFE_INTEGER;
+        let maxX = Number.MIN_SAFE_INTEGER; let maxY = Number.MIN_SAFE_INTEGER;
+
+        const segments = this.getSegemnts(toDevice);
+
+        for (const seg of segments) {
+            minX = Math.min(minX, seg.p1.x, seg.p2.x);
+            minY = Math.min(minY, seg.p1.y, seg.p2.y);
+            maxX = Math.max(maxX, seg.p1.x, seg.p2.x);
+            maxY = Math.max(maxY, seg.p1.y, seg.p2.y);
+        }
+        return {minX, minY, maxX, maxY};
+        // throw new Error("NOt implemented yet");
     }
 
     getBounds(): Bounds {
-        throw new Error("Not implemented yet");
+        return this.calculateBounds(true);
+        // throw new Error("Not implemented yet");
     }
 
     getLocalBounds(): Bounds {
-        throw new Error("Not implemented yet");
+        return this.calculateBounds(false);
+        // throw new Error("Not implemented yet");
     }
 
     toJSON(): string {
-        throw new Error("Not implemented yet");
+        let curveProps = {
+            id: this.id,
+            points: this.points,
+            mode: this.mode,
+            transform: {
+                x: this.transform.x,
+                y: this.transform.y,
+                rotation: this.transform.rotation,
+                scaleX: this.transform.scaleX,
+                scaleY: this.transform.scaleY
+            },
+            fillStyle: this.fillStyle,
+            fillOpacity: this.fillOpacity,
+            strokeStyle: this.strokeStyle,
+            strokeWidth: this.strokeWidth,
+            strokeOpacity: this.strokeOpacity
+        }
+
+        let curvePropsJSON = JSON.stringify(curveProps);
+        return curvePropsJSON;        
+        // throw new Error("Not implemented yet");
     }
 }
 
@@ -1469,10 +1640,22 @@ export const CanvasScene = ({ shapes, lineAlg }: CanvasSceneProps) => {
                 shapes.push(SomeQBezier);
                 SomeQBezier.drawRaster(r);
 
-                // let SomeBound: Shape = new Rect(SomeQBezier.getBounds().maxX-SomeQBezier.getBounds().minX, SomeQBezier.getBounds().maxY-SomeQBezier.getBounds().minY);
-                // SomeBound.transform.x = SomeQBezier.getCenter().x;
-                // SomeBound.transform.y = SomeQBezier.getCenter().y;
-                // SomeBound.drawRaster(r);
+                let pathPoints: Point2D[] = [
+                    {x:   0, y:    0},
+                    {x:  50, y:   80},
+                    {x: 100, y: -100},
+                    {x: 150, y:  -30},
+                    {x:  80, y:    0},
+                    {x: -70, y: -150},
+                    {x:  25, y: -150}
+                ]
+                let SomePathBezier: Shape = new PathBezier(pathPoints, 'catmull', true, 5);
+                SomePathBezier.strokeStyle = "#9f003d";
+                SomePathBezier.drawRaster(r);
+
+                // let SomeBound: Shape = new Rect(SomePathBezier.getBounds().maxX-SomePathBezier.getBounds().minX, SomePathBezier.getBounds().maxY-SomePathBezier.getBounds().minY);
+                // SomeBound.transform.x = SomePathBezier.getCenter().x;
+                // SomeBound.transform.y = SomePathBezier.getCenter().y;
                 r.commit(); // Вывести на экран
             }
             raf = requestAnimationFrame(frame);
