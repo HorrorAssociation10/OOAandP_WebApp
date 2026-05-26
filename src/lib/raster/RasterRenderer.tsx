@@ -995,6 +995,7 @@ export class QuadraticBezier extends Shape {
                 return dist <= (this.width/2 + ClickPadding);
             }
         };
+        console.log(sample(this.p0x, this.p0y, this.p1x, this.p1y, this.p2x, this. p2y));
         return sample(this.p0x, this.p0y, this.p1x, this.p1y, this.p2x, this. p2y);
         // throw new Error("Not implemented yet");
     }
@@ -1017,14 +1018,12 @@ export class QuadraticBezier extends Shape {
             if (devicePoint.y > maxY)
                 maxY = devicePoint.y;
         }
-
         const bounds: Bounds = {
             minX: minX,
             minY: minY,
             maxX: maxX,
             maxY: maxY
         }
-
         return bounds;
         // throw new Error("Not implemented yet");
     }
@@ -1046,15 +1045,56 @@ export class QuadraticBezier extends Shape {
             if (point.y > maxY)
                 maxY = point.y;
         }
-
         const bounds: Bounds = {
             minX: minX,
             minY: minY,
             maxX: maxX,
             maxY: maxY
         }
-
         return bounds;
+        // throw new Error("Not implemented yet");
+    }
+
+    getControlPoints(): Point2D[]{
+        const controlPoints: Point2D[] = [
+            {x: this.p0x, y: this.p0y},
+            {x: this.p1x, y: this.p1y},
+            {x: this.p2x, y: this.p2y}
+        ];
+        return controlPoints;
+        // throw new Error("Not implemented yet");
+    }
+
+    setControlPoint(idx: number, localPt: Point2D): void{
+        switch (idx){
+            case 0:{
+                this.p0x = localPt.x;
+                this.p0y = localPt.y;
+                break;
+            }
+            case 1:{
+                this.p1x = localPt.x;
+                this.p1y = localPt.y;
+                break;
+            }
+            case 2:{
+                this.p2x = localPt.x;
+                this.p2y = localPt.y;
+                break;
+            }
+            default: {
+                alert("Error! Your point index is out of range (0;2)");
+                break;
+            }
+        }
+    }
+
+    evalLocal(t: number): Point2D {
+        const point: Point2D = {
+            x: (1-t)*(1-t)*this.p0x + 2*(1-t)*t*this.p1x + t*t*this.p2x,
+            y: (1-t)*(1-t)*this.p0y + 2*(1-t)*t*this.p1y + t*t*this.p2y
+        };
+        return point;
         // throw new Error("Not implemented yet");
     }
 
@@ -1256,14 +1296,12 @@ export class CubicBezier extends Shape {
             if (devicePoint.y > maxY)
                 maxY = devicePoint.y;
         }
-
         const bounds: Bounds = {
             minX: minX,
             minY: minY,
             maxX: maxX,
             maxY: maxY
         }
-
         return bounds;
         // throw new Error("Not implemented yet");
     }
@@ -1285,15 +1323,62 @@ export class CubicBezier extends Shape {
             if (point.y > maxY)
                 maxY = point.y;
         }
-
         const bounds: Bounds = {
             minX: minX,
             minY: minY,
             maxX: maxX,
             maxY: maxY
         }
-
         return bounds;
+        // throw new Error("Not implemented yet");
+    }
+
+    getControlPoints(): Point2D[]{
+        const controlPoints: Point2D[] = [
+            {x: this.p0x, y: this.p0y},
+            {x: this.p1x, y: this.p1y},
+            {x: this.p2x, y: this.p2y},
+            {x: this.p3x, y: this.p3y}
+        ];
+        return controlPoints;
+        // throw new Error("Not implemented yet");
+    }
+
+    setControlPoint(idx: number, localPt: Point2D): void{
+        switch (idx){
+            case 0:{
+                this.p0x = localPt.x;
+                this.p0y = localPt.y;
+                break;
+            }
+            case 1:{
+                this.p1x = localPt.x;
+                this.p1y = localPt.y;
+                break;
+            }
+            case 2:{
+                this.p2x = localPt.x;
+                this.p2y = localPt.y;
+                break;
+            }
+            case 3:{
+                this.p3x = localPt.x;
+                this.p3y = localPt.y;
+                break;
+            }
+            default: {
+                alert("Error! Your point index is out of range (0;3)");
+                break;
+            }
+        }
+    }
+
+    evalLocal(t: number): Point2D {
+        const point: Point2D = {
+            x: (1-t)*(1-t)*(1-t)*this.p0x + 3*(1-t)*(1-t)*t*this.p1x + 3*(1-t)*t*t*this.p2x + t*t*t*this.p3x,
+            y: (1-t)*(1-t)*(1-t)*this.p0y + 3*(1-t)*(1-t)*t*this.p1y + 3*(1-t)*t*t*this.p2y + t*t*t*this.p3y
+        };
+        return point;
         // throw new Error("Not implemented yet");
     }
 
@@ -1443,7 +1528,7 @@ export class PathBezier extends Shape {
     }
 
     hitTest(px: number, py: number): boolean {
-        let localPoint = this.transformPointToDevice(px, py);
+        let localPoint = this.transformPointToLocal(px, py);
         if (!localPoint) return false;
 
         const ClickPadding = 5;
@@ -1462,6 +1547,7 @@ export class PathBezier extends Shape {
 
         for (const seg of segments) {
             if (distanceToSegment(seg.p1, seg.p2, localPoint) <= (this.width / 2 + ClickPadding)){
+                alert("Successful PathBezierClick!");
                 return true;
             }
         }
@@ -1497,6 +1583,32 @@ export class PathBezier extends Shape {
     getLocalBounds(): Bounds {
         return this.calculateBounds(false);
         // throw new Error("Not implemented yet");
+    }
+
+    getControlPoints(): Point2D[] {
+        return this.points;
+    }
+
+    setControlPoint(idx: number, localPt: Point2D): void {
+        if (idx > this.points.length - 1 || idx < 0)
+            alert("Error! Your point index is out of range (0;" + (this.points.length - 1) +")");
+        else{
+            this.points[idx].x = localPt.x;
+            this.points[idx].y = localPt.y;
+        }
+    }
+
+    addPointLocal(localPt: Point2D, insertAtIndex?: number): void {
+        if (insertAtIndex == null){
+            this.points.push(localPt);
+        }
+        else {
+            this.points.splice(insertAtIndex, 0, localPt);
+        }
+    }
+
+    removePoint(index: number): void {
+        this.points.splice(index, 1);
     }
 
     toJSON(): string {
@@ -1629,14 +1741,17 @@ export const CanvasScene = ({ shapes, lineAlg }: CanvasSceneProps) => {
                 TriClone.transform.y += 50;
                 TriClone.drawRaster(r);
 
-                let SomeBezier: Shape = new QuadraticBezier(0, 0, 30, -100, 100, 0, 2);
+                let SomeBezier: Shape = new QuadraticBezier(0, 0, 30, -100, 100, 0, 5);
                 SomeBezier.transform.y += 100;
                 SomeBezier.transform.x -= 150;
+                // SomeBezier.setControlPoint(1, {x: -30, y: 30});
+                // alert(SomeBezier.evalLocal(0.5).x + " " + SomeBezier.evalLocal(0.5).y);
                 shapes.push(SomeBezier);
                 SomeBezier.drawRaster(r);
 
-                let SomeQBezier: Shape = new CubicBezier(0, 0, 30, -100, 100, 100, 150, 0, 2);
+                let SomeQBezier: Shape = new CubicBezier(0, 0, 30, -100, 100, 100, 150, 0, 5);
                 SomeQBezier.transform.x += 200; 
+                // SomeQBezier.setControlPoint(0, {x: -30, y: 30});
                 shapes.push(SomeQBezier);
                 SomeQBezier.drawRaster(r);
 
@@ -1648,9 +1763,12 @@ export const CanvasScene = ({ shapes, lineAlg }: CanvasSceneProps) => {
                     {x:  80, y:    0},
                     {x: -70, y: -150},
                     {x:  25, y: -150}
-                ]
-                let SomePathBezier: Shape = new PathBezier(pathPoints, 'catmull', true, 5);
+                ];
+                let SomePathBezier: Shape = new PathBezier(pathPoints, 'catmull', false, 5);
                 SomePathBezier.strokeStyle = "#9f003d";
+                // SomePathBezier.removePoint(0);
+                // SomePathBezier.addPointLocal({x: 200, y: -200}, 3);
+                shapes.push(SomePathBezier);
                 SomePathBezier.drawRaster(r);
 
                 // let SomeBound: Shape = new Rect(SomePathBezier.getBounds().maxX-SomePathBezier.getBounds().minX, SomePathBezier.getBounds().maxY-SomePathBezier.getBounds().minY);
