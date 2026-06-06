@@ -876,6 +876,7 @@ export class QuadraticBezier extends Shape {
     constructor (public p0x: number, public p0y: number,
                  public p1x: number, public p1y: number,
                  public p2x: number, public p2y: number,
+                 public closed: boolean = false,
                  public width: number = 1)
     {
         super();
@@ -888,6 +889,9 @@ export class QuadraticBezier extends Shape {
         //Рекурсивный алгоритм де Кастельжо для разбиения кривой на отрезки
         const tolerance = 0.5;
         let prevPoint: Point2D | null = null;
+
+        const firstDevicePoint = this.transformPointToDevice(this.p0x, this.p0y);
+        
 
         const sample = (
             x1: number, y1: number,
@@ -924,6 +928,10 @@ export class QuadraticBezier extends Shape {
         
         prevPoint = this.transformPointToDevice(this.p0x, this.p0y);
         sample(this.p0x, this.p0y, this.p1x, this.p1y, this.p2x, this.p2y);
+
+        if (this.closed && prevPoint != null){
+            r.strokeLine(prevPoint.x, prevPoint.y, firstDevicePoint.x, firstDevicePoint.y, strokeColor, this.strokeWidth);
+        }
         // throw new Error("Not implemented yet");
     }
 
@@ -995,8 +1003,15 @@ export class QuadraticBezier extends Shape {
                 return dist <= (this.width/2 + ClickPadding);
             }
         };
-        console.log(sample(this.p0x, this.p0y, this.p1x, this.p1y, this.p2x, this. p2y));
-        return sample(this.p0x, this.p0y, this.p1x, this.p1y, this.p2x, this. p2y);
+
+        if (sample(this.p0x, this.p0y, this.p1x, this.p1y, this.p2x, this. p2y)){
+            return true;
+        }
+        if (this.closed){
+            const distToClosingSegment = distanceToSegment(this.p2x, this.p2y, this.p0x, this.p0y);
+            return distToClosingSegment <= (this.width/2 + ClickPadding);
+        }
+        return false;
         // throw new Error("Not implemented yet");
     }
 
@@ -1129,6 +1144,7 @@ export class CubicBezier extends Shape {
                  public p1x: number, public p1y: number,
                  public p2x: number, public p2y: number,
                  public p3x: number, public p3y: number,
+                 public closed: boolean = false,
                  public width: number = 1)
     {
         super();
@@ -1141,6 +1157,8 @@ export class CubicBezier extends Shape {
         //Рекурсивный алгоритм де Кастельжо для разбиения кривой на отрезки
         const tolerance = 0.5;
         let prevPoint: Point2D | null = null;
+
+        const firstDevicePoint = this.transformPointToDevice(this.p0x, this.p0y);
 
         const sample = (
             x1: number, y1: number,
@@ -1193,6 +1211,10 @@ export class CubicBezier extends Shape {
         
         prevPoint = this.transformPointToDevice(this.p0x, this.p0y);
         sample(this.p0x, this.p0y, this.p1x, this.p1y, this.p2x, this.p2y, this.p3x, this.p3y);
+
+        if (this.closed && prevPoint != null){
+            r.strokeLine(prevPoint.x, prevPoint.y, firstDevicePoint.x, firstDevicePoint.y, strokeColor, this.strokeWidth);
+        }
         // throw new Error("Not implemented yet");
     }
 
@@ -1273,8 +1295,15 @@ export class CubicBezier extends Shape {
                 return dist <= (this.width/2 + ClickPadding);
             }
         };
-        console.log(sample(this.p0x, this.p0y, this.p1x, this.p1y, this.p2x, this.p2y, this.p3x, this.p3y));
-        return sample(this.p0x, this.p0y, this.p1x, this.p1y, this.p2x, this.p2y, this.p3x, this.p3y);
+
+        if (sample(this.p0x, this.p0y, this.p1x, this.p1y, this.p2x, this.p2y, this.p3x, this.p3y)){
+            return true;
+        }
+        if (this.closed){
+            const distToClosingSegment = distanceToSegment(this.p3x, this.p3y, this.p0x, this.p0y);
+            return distToClosingSegment <= (this.width/2 + ClickPadding);
+        }
+        return false;
         // throw new Error("Not implemented yet");
     }
 
@@ -1492,11 +1521,51 @@ export class PathBezier extends Shape {
             }
         }
         else if (this.mode == 'bezier') {
-            for (let i = 0; i< count - 2; i += 2) {
-                sampleQuadratic(pts[i], pts[i+1], pts[i+2]);
-            }
-            if (this.closed && count > 2) {
-                sampleQuadratic(pts[count-1], pts[0], pts[1]);
+            if (this.closed) {
+                // --- ЗАМКНУТЫЙ РЕЖИМ ---
+                // Стартовая точка — середина между последней и первой точками
+                let pStart = {
+                    x: (pts[count - 1].x + pts[0].x) / 2,
+                    y: (pts[count - 1].y + pts[0].y) / 2
+                };
+                let currentStart = pStart;
+
+                for (let i = 0; i < count; ++i) {
+                    const cp = pts[i]; // Текущая точка массива выступает как контрольная
+                    const nextPt = pts[(i + 1) % count];
+                    
+                    // Конечная точка сегмента — середина между текущей контрольной и следующей
+                    const pEnd = {
+                        x: (cp.x + nextPt.x) / 2,
+                        y: (cp.y + nextPt.y) / 2
+                    };
+
+                    sampleQuadratic(currentStart, cp, pEnd);
+                    currentStart = pEnd; // Конец этой кривой — начало следующей
+                }
+            } else {
+                // --- РАЗОМКНУТЫЙ РЕЖИМ ---
+                // Линия начинается строго в первой точке и заканчивается строго в последней
+                let currentStart = pts[0];
+
+                for (let i = 1; i < count - 1; ++i) {
+                    const cp = pts[i]; // Контрольная точка
+                    const nextPt = pts[i + 1];
+                    
+                    // Точка на кривой (середина между управляющими)
+                    const pEnd = {
+                        x: (cp.x + nextPt.x) / 2,
+                        y: (cp.y + nextPt.y) / 2
+                    };
+
+                    sampleQuadratic(currentStart, cp, pEnd);
+                    currentStart = pEnd;
+                }
+
+                // Рисуем финальный сегмент до самой последней жесткой точки pts[count-1]
+                if (count > 2) {
+                    sampleQuadratic(currentStart, pts[count - 1], pts[count - 1]);
+                }
             }
         }
         else if (this.mode == 'catmull') {
@@ -1699,7 +1768,6 @@ export const CanvasScene = ({ shapes, lineAlg }: CanvasSceneProps) => {
                 // for (const shape of shapes) {
                     // shape.drawRaster(r);
                 // }
-                // Попробуйте нарисвать красный полигон с черной обводкой или что-нибудь ещё
 
                 let SomeRect: Shape = new Rect(70, 120);
                 SomeRect.transform.x = 600;
@@ -1741,7 +1809,7 @@ export const CanvasScene = ({ shapes, lineAlg }: CanvasSceneProps) => {
                 TriClone.transform.y += 50;
                 TriClone.drawRaster(r);
 
-                let SomeBezier: Shape = new QuadraticBezier(0, 0, 30, -100, 100, 0, 5);
+                let SomeBezier: Shape = new QuadraticBezier(0, 0, 30, -100, 100, 0, true, 3);
                 SomeBezier.transform.y += 100;
                 SomeBezier.transform.x -= 150;
                 // SomeBezier.setControlPoint(1, {x: -30, y: 30});
@@ -1749,7 +1817,7 @@ export const CanvasScene = ({ shapes, lineAlg }: CanvasSceneProps) => {
                 shapes.push(SomeBezier);
                 SomeBezier.drawRaster(r);
 
-                let SomeQBezier: Shape = new CubicBezier(0, 0, 30, -100, 100, 100, 150, 0, 5);
+                let SomeQBezier: Shape = new CubicBezier(0, 0, 30, -100, 100, 100, 150, 0, true, 3);
                 SomeQBezier.transform.x += 200; 
                 // SomeQBezier.setControlPoint(0, {x: -30, y: 30});
                 shapes.push(SomeQBezier);
@@ -1764,7 +1832,7 @@ export const CanvasScene = ({ shapes, lineAlg }: CanvasSceneProps) => {
                     {x: -70, y: -150},
                     {x:  25, y: -150}
                 ];
-                let SomePathBezier: Shape = new PathBezier(pathPoints, 'catmull', false, 5);
+                let SomePathBezier: Shape = new PathBezier(pathPoints, 'bezier', true, 3);
                 SomePathBezier.strokeStyle = "#9f003d";
                 // SomePathBezier.removePoint(0);
                 // SomePathBezier.addPointLocal({x: 200, y: -200}, 3);
