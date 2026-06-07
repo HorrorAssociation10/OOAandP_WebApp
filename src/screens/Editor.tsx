@@ -1,8 +1,9 @@
 import {RectangleHorizontal, Circle, Hexagon, ArrowBigLeft, Save} from "lucide-react"
 import {useParams, Link} from "react-router-dom"
-import {useState } from "react"
+import {useState} from "react"
 import {motion} from "framer-motion"
-import {CanvasScene, LineAlg, Shape} from "../lib/raster/RasterRenderer"
+import {CanvasScene, LineAlg} from "../lib/raster/RasterRenderer"
+import {Shape} from "../lib/raster/ShapesVisualization";
 
 export default function Editor(){
     const {id} = useParams();
