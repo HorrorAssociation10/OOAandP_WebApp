@@ -142,8 +142,8 @@ export class Rect extends Shape {
         let strokeColor: RGBA = hexToRGBA(this.strokeStyle);
         strokeColor.a = this.strokeOpacity;
 
-        r.strokePolygon(points, strokeColor, this.strokeWidth);
         r.fillPolygon(points, fillColor)
+        r.strokePolygon(points, strokeColor, this.strokeWidth);
     }
     
     hitTest(px: number, py: number): boolean {
@@ -153,7 +153,6 @@ export class Rect extends Shape {
 
         if ((-this.width/2 <= localPoint.x && localPoint.x <= this.width/2)
             && (-this.height/2 <= localPoint.y && localPoint.y <= this.height/2)){
-                alert("You clicked a " + this.id + "!");
                 return true;
         }
         else
@@ -264,7 +263,6 @@ export class Line extends Shape{
 
         if (x >= -halfLen - threshold && x <= halfLen + threshold) {
             if (Math.abs(y) <= threshold) {
-                alert("You clicked a line: " + this.id + "!");
                 return true;
             }
         }
@@ -338,8 +336,8 @@ export class Ellipse extends Shape {
         let strokeColor: RGBA = hexToRGBA(this.strokeStyle);
         strokeColor.a = this.strokeOpacity;
 
-        r.strokePolygon(points, strokeColor, this.strokeWidth);
         r.fillPolygon(points, fillColor)
+        r.strokePolygon(points, strokeColor, this.strokeWidth);
     }
     
     hitTest(px: number, py: number): boolean {
@@ -348,7 +346,6 @@ export class Ellipse extends Shape {
 
         var normCoords: Point2D = {x: localPoint.x/this.rx, y: localPoint.y/this.ry};
         if (normCoords.x*normCoords.x + normCoords.y*normCoords.y <= 1){
-            alert("You clicked a " + this.id + "!");
             return true;
         }
         else
@@ -437,8 +434,8 @@ export class Triangle extends Shape {
         let strokeColor: RGBA = hexToRGBA(this.strokeStyle);
         strokeColor.a = this.strokeOpacity;
 
-        r.strokePolygon(points, strokeColor, this.strokeWidth);
         r.fillPolygon(points, fillColor)
+        r.strokePolygon(points, strokeColor, this.strokeWidth);
         // throw new Error("Not implemented yet");
     }
 
@@ -464,11 +461,9 @@ export class Triangle extends Shape {
         const third = ca.x*cp.y - ca.y*cp.x;
 
         if (first > 0 && second > 0 && third > 0){
-            alert("Success!");
             return true;
         }
         else if (first < 0 && second < 0 && third < 0){
-            alert("Success!");
             return true;
         }
         else
@@ -1281,7 +1276,6 @@ export class PathBezier extends Shape {
 
         for (const seg of segments) {
             if (distanceToSegment(seg.p1, seg.p2, localPoint) <= (this.width / 2 + ClickPadding)){
-                alert("Successful PathBezierClick!");
                 return true;
             }
         }
