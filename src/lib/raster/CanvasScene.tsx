@@ -21,6 +21,7 @@ interface InteractionState {
     startX: number,
     startY: number,
     activeHandle: HandleType | null;
+    activePointIndex?: number;
     startTransform: {
         x: number, 
         y: number, 
@@ -69,7 +70,22 @@ export const CanvasScene = ({ lineAlg }: CanvasSceneProps) => {
         const SomePathBezier: Shape = new PathBezier(pathPoints, 'bezier', true, 3);
         SomePathBezier.strokeStyle = "#9f003d";
 
-        setShapes([SomeRect, SomeLine, SomePathBezier]);
+        const SomeBezier: Shape = new QuadraticBezier(0, 0, 30, -100, 100, 0, true, 3);
+        SomeBezier.transform.y += 100;
+        SomeBezier.transform.x -= 150;
+
+        const SomeQBezier: Shape = new CubicBezier(0, 0, 30, -100, 100, 100, 150, 0, true, 3);
+        SomeQBezier.transform.x += 200;
+
+        const SomeEllipse: Shape = new Ellipse(800, 200, 60, 60);
+        SomeEllipse.transform.x = 900;
+        SomeEllipse.transform.y = 100;
+
+        const SomeTriangle: Shape = new Triangle(0, 0, 30, 100, 60, 15);
+        SomeTriangle.transform.x = 600; SomeTriangle.transform.y = 500;
+
+        setShapes([SomeRect, SomeLine, SomePathBezier, SomeBezier,
+            SomeQBezier, SomeEllipse, SomeTriangle]);
     }, []);
 
     const shapesRef = useRef<Shape[]>([]);
@@ -109,6 +125,7 @@ export const CanvasScene = ({ lineAlg }: CanvasSceneProps) => {
 
                 if (hitHandle) {
                     let mode: InteractionMode = hitHandle == "ROTATION" ? "ROTATING" : "RESIZING";
+                    const bounds = currentSelected.getBounds();
 
                     interactionRef.current = {
                         mode: mode,
@@ -121,11 +138,35 @@ export const CanvasScene = ({ lineAlg }: CanvasSceneProps) => {
                             rotation: currentSelected.transform.rotation,
                             scaleX: currentSelected.transform.scaleX,
                             scaleY: currentSelected.transform.scaleY,
-                            width: (currentSelected as any).width || 100,
-                            height: (currentSelected as any).height || 100
+                            width: (bounds.maxX - bounds.minX) / currentSelected.transform.scaleX,
+                            height: (bounds.maxY - bounds.minY) / currentSelected.transform.scaleY,
                         }
                     };
                     return;
+                }
+            }
+            if (currentSelected && typeof (currentSelected as any).getControlPoints == "function") {
+                const localMouse = currentSelected.transformPointToLocal(coords.x, coords.y);
+
+                if (localMouse != null) {
+                    const localPoints: Point2D[] = (currentSelected as any).getControlPoints();
+                    const hitRadius = 8;
+
+                    const hitIndex = localPoints.findIndex(pt => 
+                        Math.hypot(localMouse.x - pt.x, localMouse.y - pt.y) <= hitRadius
+                    );
+                    
+                    if(hitIndex !== -1) {
+                        interactionRef.current = {
+                            mode: "EDITING_POINTS",
+                            activeHandle: null,
+                            activePointIndex: hitIndex,
+                            startX: coords.x,
+                            startY: coords.y,
+                            startTransform: {...currentSelected.transform}
+                        };
+                        return;
+                    }
                 }
             }
         }
@@ -179,97 +220,99 @@ export const CanvasScene = ({ lineAlg }: CanvasSceneProps) => {
             const centerY = interaction.startTransform.y;
 
             const currentAngle = Math.atan2(coords.y - centerY, coords.x - centerX);
-            const baseAngle = -Math.PI/2;
+            const baseAngle = Math.PI/2;
             activeShape.transform.rotation = currentAngle - baseAngle;
         }
 
         else if (interaction.mode === "RESIZING" && interaction.activeHandle) {
-            const rad = -interaction.startTransform.rotation;
-  
-            // Проекция экранного вектора смещения мыши на локальные оси фигуры
-            const localDx = dx * Math.cos(rad) - dy * Math.sin(rad);
-            const localDy = dx * Math.sin(rad) + dy * Math.cos(rad);
+            const startTransform = interaction.startTransform;
+            const origRad = startTransform.rotation;
 
-            const startW = interaction.startTransform.width!;
-            const startH = interaction.startTransform.height!;
+            const dx = coords.x - interaction.startX;
+            const dy = coords.y - interaction.startY;
 
-            // Инициализируем коэффициенты изменения масштаба
+            const localDx = dx * Math.cos(-origRad) - dy * Math.sin(-origRad);
+            const localDy = dx * Math.sin(-origRad) + dy * Math.cos(-origRad);
+
+            const startW = startTransform.width || 100;
+            const startH = startTransform.height || 100;
+
             let factorX = 1;
             let factorY = 1;
-  
-            // Локальное смещение центра объекта (нужно для фиксации противоположного угла)
             let localCenterX = 0;
             let localCenterY = 0;
 
             switch (interaction.activeHandle) {
-                case "BR": // Нижний-правый: фиксирован Top-Left
+                case "BR":
                     factorX = (startW + localDx) / startW;
                     factorY = (startH + localDy) / startH;
                     localCenterX = localDx / 2;
                     localCenterY = localDy / 2;
                     break;
 
-                case "TR": // Верхний-правый: фиксирован Bottom-Left
+                case "TL":
+                    factorX = (startW - localDx) / startW;
+                    factorY = (startH - localDy) / startH;
+                    localCenterX = localDx / 2;
+                    localCenterY = localDy / 2;
+                    break;
+
+                case "TR":
                     factorX = (startW + localDx) / startW;
                     factorY = (startH - localDy) / startH;
                     localCenterX = localDx / 2;
                     localCenterY = localDy / 2;
                     break;
 
-                case "BL": // Нижний-левый: фиксирован Top-Right
+                case "BL": 
                     factorX = (startW - localDx) / startW;
                     factorY = (startH + localDy) / startH;
                     localCenterX = localDx / 2;
-                    localCenterY = localDy / 2;
-                    break;
-
-                case "TL": // Верхний-левый: фиксирован Bottom-Right
-                    factorX = (startW - localDx) / startW;
-                    factorY = (startH - localDy) / startH;
-                    localCenterX = localDx / 2;
-                    localCenterY = localDy / 2;
-                    break;
-
-                // Боковые маркеры (опционально)
-                case "RIGHT":
-                    factorX = (startW + localDx) / startW;
-                    localCenterX = localDx / 2;
-                    break;
-                case "LEFT":
-                    factorX = (startW - localDx) / startW;
-                    localCenterX = localDx / 2;
-                    break;
-                case "BOTTOM":
-                    factorY = (startH + localDy) / startH;
-                    localCenterY = localDy / 2;
-                    break;
-                case "TOP":
-                    factorY = (startH - localDy) / startH;
                     localCenterY = localDy / 2;
                     break;
             }
 
-            // Защита от «выворачивания» объекта наизнанку (минимальный масштаб)
             const minScale = 0.1;
-            const newScaleX = Math.max(minScale, interaction.startTransform.scaleX * factorX);
-            const newScaleY = Math.max(minScale, interaction.startTransform.scaleY * factorY);
+            const maxScale = 20.0;
+                
+            let newScaleX = Math.max(minScale, Math.min(maxScale, startTransform.scaleX * factorX));
+            let newScaleY = Math.max(minScale, Math.min(maxScale, startTransform.scaleY * factorY));
 
-            // Применяем новый масштаб к фигуре
+            const realFactorX = newScaleX / startTransform.scaleX;
+            const realFactorY = newScaleY / startTransform.scaleY;
+            localCenterX = (startW * (realFactorX - 1)) / 2;
+            localCenterY = (startH * (realFactorY - 1)) / 2;
+  
+            if (interaction.activeHandle === "TL") {
+                localCenterX = -localCenterX;
+                localCenterY = -localCenterY;
+            } else if (interaction.activeHandle === "TR") {
+                localCenterY = -localCenterY;
+            } else if (interaction.activeHandle === "BL") {
+                localCenterX = -localCenterX;
+            }
+
             activeShape.transform.scaleX = newScaleX;
             activeShape.transform.scaleY = newScaleY;
 
-            // Поворачиваем локальное смещение центра обратно в мировые координаты экрана
-            const origRad = interaction.startTransform.rotation;
             const worldCenterX = localCenterX * Math.cos(origRad) - localCenterY * Math.sin(origRad);
             const worldCenterY = localCenterX * Math.sin(origRad) + localCenterY * Math.cos(origRad);
 
-            // Сдвигаем позицию фигуры, чтобы противоположный угол оставался мертвой точкой при ресайзе
-            activeShape.transform.x = interaction.startTransform.x + worldCenterX;
-            activeShape.transform.y = interaction.startTransform.y + worldCenterY;
+            activeShape.transform.x = startTransform.x + worldCenterX;
+            activeShape.transform.y = startTransform.y + worldCenterY;
+        }
+
+        else if (interaction.mode === "EDITING_POINTS" && interaction.activePointIndex != undefined) {
+            const idx = interaction.activePointIndex;
+
+            const localMouse = activeShape.transformPointToLocal(coords.x, coords.y);
+            if (localMouse != null) {
+                (activeShape as any).setControlPoint(idx, localMouse);
+            }
         }
     };
 
-    const hadnlePointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const handlePointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
         e.currentTarget.releasePointerCapture(e.pointerId);
 
         if (interactionRef.current.mode != "IDLE") {
@@ -384,85 +427,46 @@ export const CanvasScene = ({ lineAlg }: CanvasSceneProps) => {
                                 { r: 0, g: 122, b: 204, a: 255 }, 1
                             );
                         });
+
+                        if (typeof (selectedShape as any).getControlPoints === "function") {
+                                const localPoints: Point2D[] = (selectedShape as any).getControlPoints();
+
+                                // 1. Сначала переводим ВСЕ локальные точки в экранные координаты
+                                const devicePoints = localPoints.map(pt => 
+                                    selectedShape.transformPointToDevice(pt.x, pt.y)
+                                );
+
+                                // 2. Рисуем соединительные линии между точками кривой для наглядности
+                                for (let i = 0; i < devicePoints.length - 1; i++) {
+                                    r.strokePolygon(
+                                        [devicePoints[i], devicePoints[i + 1]], 
+                                        { r: 128, g: 128, b: 128, a: 150 }, // серые линии-"усики"
+                                        1
+                                    );
+                                }
+
+                                // 3. Рисуем кружочки на месте каждой точки
+                                devicePoints.forEach((point, idx) => {
+                                // Крайние точки сделаем синими, а управляющие — белыми с синим контуром
+                                const isAnchor = (idx === 0 || idx === devicePoints.length - 1);
+                                const color = isAnchor ? { r: 0, g: 122, b: 204, a: 255 } : { r: 255, g: 255, b: 255, a: 255 };
+
+                                // Рисуем сам кружочек
+                                r.fillCircle(point.x, point.y, 5, color);
+
+                                // Рисуем рамку вокруг кружочка
+                                r.strokePolygon(
+                                    [{ x: point.x - 4, y: point.y - 4 }, { x: point.x + 4, y: point.y - 4 },
+                                    { x: point.x + 4, y: point.y + 4 }, { x: point.x - 4, y: point.y + 4 }],
+                                    { r: 0, g: 122, b: 204, a: 255 }, 
+                                    1
+                                );
+                            });
+                        }
                     }
                 }
                 
                 r.commit();
-
-                // let SomeRect: Shape = new Rect(70, 120);
-                // SomeRect.transform.x = 600;
-                // SomeRect.transform.y = 150;
-                // SomeRect.transform.rotation = 1;
-                // SomeRect.fillStyle = "#990000";
-                // SomeRect.fillOpacity = 128;
-                // SomeRect.strokeStyle = "#54a4f2";
-                // shapes.push(SomeRect);
-                // SomeRect.drawRaster(r);
-
-                // let SomeLine: Shape = new Line(0, 0, 100, 120, 30);
-                // // SomeLine.transform.rotation = 0;
-                // SomeLine.transform.y = 100;
-                // SomeLine.transform.x = 100;
-                // SomeLine.transform.rotation = 2.4
-                // SomeLine.fillStyle = "#d31486";
-                // shapes.push(SomeLine);
-                // SomeLine.drawRaster(r);
-
-                // let SomeEllipse: Shape = new Ellipse(800, 200, 60, 60);
-                // shapes.push(SomeEllipse);
-                // SomeEllipse.transform.x = 900;
-                // SomeEllipse.transform.y = 100;
-                // SomeEllipse.drawRaster(r);
-
-                // let SomeClone = SomeRect.clone();
-                // SomeClone.transform.x += 100;
-                // SomeClone.transform.y += 100;
-                // SomeClone.drawRaster(r);
-
-                // let SomeTriangle: Shape = new Triangle(0, 0, 30, 100, 60, 15);
-                // shapes.push(SomeTriangle);
-                // SomeTriangle.transform.x = 600; SomeTriangle.transform.y = 500;
-                // SomeTriangle.drawRaster(r);
-
-                // let TriClone = SomeTriangle.clone();
-                // TriClone.transform.x += 200;
-                // TriClone.transform.y += 50;
-                // TriClone.drawRaster(r);
-
-                // let SomeBezier: Shape = new QuadraticBezier(0, 0, 30, -100, 100, 0, true, 3);
-                // SomeBezier.transform.y += 100;
-                // SomeBezier.transform.x -= 150;
-                // // SomeBezier.setControlPoint(1, {x: -30, y: 30});
-                // // alert(SomeBezier.evalLocal(0.5).x + " " + SomeBezier.evalLocal(0.5).y);
-                // shapes.push(SomeBezier);
-                // SomeBezier.drawRaster(r);
-
-                // let SomeQBezier: Shape = new CubicBezier(0, 0, 30, -100, 100, 100, 150, 0, true, 3);
-                // SomeQBezier.transform.x += 200; 
-                // // SomeQBezier.setControlPoint(0, {x: -30, y: 30});
-                // shapes.push(SomeQBezier);
-                // SomeQBezier.drawRaster(r);
-
-                // let pathPoints: Point2D[] = [
-                //     {x:   0, y:    0},
-                //     {x:  50, y:   80},
-                //     {x: 100, y: -100},
-                //     {x: 150, y:  -30},
-                //     {x:  80, y:    0},
-                //     {x: -70, y: -150},
-                //     {x:  25, y: -150}
-                // ];
-                // let SomePathBezier: Shape = new PathBezier(pathPoints, 'bezier', true, 3);
-                // SomePathBezier.strokeStyle = "#9f003d";
-                // // SomePathBezier.removePoint(0);
-                // // SomePathBezier.addPointLocal({x: 200, y: -200}, 3);
-                // shapes.push(SomePathBezier);
-                // SomePathBezier.drawRaster(r);
-
-                // // let SomeBound: Shape = new Rect(SomePathBezier.getBounds().maxX-SomePathBezier.getBounds().minX, SomePathBezier.getBounds().maxY-SomePathBezier.getBounds().minY);
-                // // SomeBound.transform.x = SomePathBezier.getCenter().x;
-                // // SomeBound.transform.y = SomePathBezier.getCenter().y;
-                // r.commit(); // Вывести на экран
             }
             raf = requestAnimationFrame(frame);
         };
@@ -480,7 +484,7 @@ export const CanvasScene = ({ lineAlg }: CanvasSceneProps) => {
             <canvas 
                 ref={canvasRef} 
                 onPointerDown={handlePointerDown}
-                onPointerUp={hadnlePointerUp}
+                onPointerUp={handlePointerUp}
                 onPointerMove={handlePointerMove}
                 className="w-full h-full border border-amber-400" 
                 style={{touchAction: "none"}}/>
