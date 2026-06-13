@@ -1,14 +1,13 @@
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect} from "react";
 import { Point2D } from "../math/mat3";
 import { Shape, Rect, Line, Ellipse, Triangle, QuadraticBezier, CubicBezier, PathBezier } from "../raster/ShapesVisualization";
 import {RasterRenderer, LineAlg} from "./RasterRenderer";
 
 interface CanvasSceneProps {
-    // shapes: Shape[];
-    // selectedId: string | null;
-    // onSelect: (id: string | null) => void;
-    // onUpdate: () => void;
-    // overlayTick: number;
+    shapes: Shape[];
+    selectedId: Number | null;
+    setSelectedId: (id: Number | null) => void,
+    setShapes: React.Dispatch<React.SetStateAction<Shape[]>>;
     lineAlg: LineAlg;
 }
 
@@ -33,13 +32,13 @@ interface InteractionState {
     } | null;
 }
 
-export const CanvasScene = ({ lineAlg }: CanvasSceneProps) => {
+export const CanvasScene = ({ lineAlg, shapes, setShapes, selectedId, setSelectedId }: CanvasSceneProps) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const rendererRef = useRef<RasterRenderer>(null);
     const containerRef = useRef<HTMLDivElement | null>(null);
     
-    const [shapes, setShapes] = useState<Shape[]>([]);
-    const [selectedId, setSelectedId] = useState<Number | null>(null);
+    // const [shapes, setShapes] = useState<Shape[]>([]);
+    // const [selectedId, setSelectedId] = useState<Number | null>(null);
     
     useEffect(() => {
         const SomeRect: Shape = new Rect(70, 120);
