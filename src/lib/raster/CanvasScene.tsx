@@ -428,7 +428,6 @@ export const CanvasScene = ({ lineAlg, shapes, setShapes, selectedId, setSelecte
                         r.fillCircle(deviceRotationHandleLineEnd.x, deviceRotationHandleLineEnd.y, 6, { r: 46, g: 204, b: 113, a: 255 });
 
                         const handlePositions = [deviceTL, deviceTR, deviceBR, deviceBL];
-
                         handlePositions.forEach(point => {
                             r.fillCircle(point.x, point.y, 5, { r: 255, g: 255, b: 255, a: 255 });
                             r.strokePolygon(
