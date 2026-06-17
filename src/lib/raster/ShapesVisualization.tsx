@@ -496,11 +496,13 @@ export class Triangle extends Shape {
     }
 
     getLocalBounds(): Bounds {
+        const cx = (this.x1 + this.x2 + this.x3)/3;
+        const cy = (this.y1 + this.y2 + this.y3)/3;
         let bounds: Bounds = {
-            minX: Math.min(this.x1, this.x2, this.x3),
-            minY: Math.max(this.y1, this.y2, this.y3),
-            maxX: Math.min(this.x1, this.x2, this.x3),
-            maxY: Math.max(this.y1, this.y2, this.y3),
+            minX: Math.min(this.x1-cx, this.x2-cx, this.x3-cx),
+            minY: Math.min(this.y1-cy, this.y2-cy, this.y3-cy),
+            maxX: Math.max(this.x1-cx, this.x2-cx, this.x3-cx),
+            maxY: Math.max(this.y1-cy, this.y2-cy, this.y3-cy),
         }
         return bounds;
         // throw new Error("Not implemented yet");

@@ -124,7 +124,10 @@ export const CanvasScene = ({ lineAlg, shapes, setShapes, selectedId, setSelecte
 
                 if (hitHandle) {
                     let mode: InteractionMode = hitHandle == "ROTATION" ? "ROTATING" : "RESIZING";
-                    const bounds = currentSelected.getBounds();
+                    
+                    const localBounds = currentSelected.getLocalBounds();
+                    const localWidth = localBounds.maxX - localBounds.minX;
+                    const localHeight = localBounds.maxY - localBounds.minY;
 
                     interactionRef.current = {
                         mode: mode,
@@ -137,8 +140,8 @@ export const CanvasScene = ({ lineAlg, shapes, setShapes, selectedId, setSelecte
                             rotation: currentSelected.transform.rotation,
                             scaleX: currentSelected.transform.scaleX,
                             scaleY: currentSelected.transform.scaleY,
-                            width: (bounds.maxX - bounds.minX) / currentSelected.transform.scaleX,
-                            height: (bounds.maxY - bounds.minY) / currentSelected.transform.scaleY,
+                            width: localWidth,
+                            height: localHeight
                         }
                     };
                     return;
@@ -218,8 +221,11 @@ export const CanvasScene = ({ lineAlg, shapes, setShapes, selectedId, setSelecte
             const centerX = interaction.startTransform.x;
             const centerY = interaction.startTransform.y;
 
-            const currentAngle = Math.atan2(coords.y - centerY, coords.x - centerX);
-            const baseAngle = Math.PI/2;
+            const mouseDx = coords.x - centerX;
+            const mouseDy = coords.y - centerY;
+
+            const currentAngle = Math.atan2(mouseDx, -mouseDy);
+            const baseAngle = 0;
             activeShape.transform.rotation = currentAngle - baseAngle;
         }
 
@@ -233,8 +239,8 @@ export const CanvasScene = ({ lineAlg, shapes, setShapes, selectedId, setSelecte
             const localDx = dx * Math.cos(-origRad) - dy * Math.sin(-origRad);
             const localDy = dx * Math.sin(-origRad) + dy * Math.cos(-origRad);
 
-            const startW = startTransform.width || 100;
-            const startH = startTransform.height || 100;
+            const startW = startTransform.width ?? 1;
+            const startH = startTransform.height ?? 1;
 
             let factorX = 1;
             let factorY = 1;
@@ -321,7 +327,10 @@ export const CanvasScene = ({ lineAlg, shapes, setShapes, selectedId, setSelecte
     };
 
     const getHandleAtPosition = (shape: Shape, mouseX: number, mouseY: number): HandleType | null => {
-        const bounds = shape.getBounds();
+        const localMouse = shape.transformPointToLocal(mouseX, mouseY);
+        if (!localMouse) return null;
+        
+        const bounds = shape.getLocalBounds();   
         const padding = 4;
 
         const left = bounds.minX - padding;
@@ -330,11 +339,10 @@ export const CanvasScene = ({ lineAlg, shapes, setShapes, selectedId, setSelecte
         const bottom = bounds.maxY + padding;
         const centerX = (left + right) / 2;
         const centerY = (top + bottom) / 2;
-
-        const hitRadius = 8;
+        const hitRadius = 8 / shape.transform.scaleX;
 
         const isHit = (hx: number, hy: number) => {
-            return Math.abs(mouseX - hx) <= hitRadius && Math.abs(mouseY - hy) <= hitRadius;
+            return Math.abs(localMouse.x - hx) <= hitRadius && Math.abs(localMouse.y - hy) <= hitRadius;
         };
 
         if (isHit(centerX, top - 25)) return "ROTATION";
@@ -391,32 +399,35 @@ export const CanvasScene = ({ lineAlg, shapes, setShapes, selectedId, setSelecte
                 if (currentSelectedId != null) {
                     const selectedShape = currentShapes.find(shape => shape.id == currentSelectedId);
                     if (selectedShape) {
-                        const bounds = selectedShape.getBounds();
+                        const localBounds = selectedShape.getLocalBounds();
                         const padding = 4;
-                        const left = bounds.minX - padding;
-                        const right = bounds.maxX + padding;
-                        const top = bounds.minY - padding;
-                        const bottom = bounds.maxY + padding;
+                        const left = localBounds.minX - padding;
+                        const right = localBounds.maxX + padding;
+                        const top = localBounds.minY - padding;
+                        const bottom = localBounds.maxY + padding;
                         const centerX = (left + right) / 2;
+
+                        const deviceTL = selectedShape.transformPointToDevice(left, top);
+                        const deviceTR = selectedShape.transformPointToDevice(right, top);
+                        const deviceBR = selectedShape.transformPointToDevice(right, bottom);
+                        const deviceBL = selectedShape.transformPointToDevice(left, bottom);
+
+                        const deviceRotationHandleLineEnd = selectedShape.transformPointToDevice(centerX, top - 25);
+                        const deviceRotationHandleLineStart = selectedShape.transformPointToDevice(centerX, top);
                         
                         r.strokePolygon(
-                            [{x: left, y: top}, {x: right, y: top},
-                            {x: right, y: bottom}, {x: left, y: bottom}],
+                            [deviceTL, deviceTR, deviceBR, deviceBL],
                             {r: 0, g: 122, b: 204, a: 255}, 2
                         );
 
                         r.strokePolygon(
-                            [{ x: centerX, y: top },
-                            { x: centerX, y: top - 25 }], 
+                            [deviceRotationHandleLineStart, deviceRotationHandleLineEnd], 
                             { r: 0, g: 122, b: 204, a: 255 }, 1.5
                         );
 
-                        r.fillCircle(centerX, top - 25, 6, { r: 46, g: 204, b: 113, a: 255 });
+                        r.fillCircle(deviceRotationHandleLineEnd.x, deviceRotationHandleLineEnd.y, 6, { r: 46, g: 204, b: 113, a: 255 });
 
-                        const handlePositions = [
-                            {x: left, y: top}, {x: right, y: top},
-                            {x: left, y: bottom}, {x: right, y: bottom}
-                        ];
+                        const handlePositions = [deviceTL, deviceTR, deviceBR, deviceBL];
 
                         handlePositions.forEach(point => {
                             r.fillCircle(point.x, point.y, 5, { r: 255, g: 255, b: 255, a: 255 });
