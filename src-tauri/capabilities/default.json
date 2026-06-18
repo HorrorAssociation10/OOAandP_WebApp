@@ -8,11 +8,15 @@
     "opener:default",
     "dialog:default",
     {
-      "identifier": "fs:allow-mkdir",
-      "allow": [{"path": "$DOCUMENT/VectorEngine"}]
+      "identifier": "fs:allow-exists",
+      "allow": [{"path": "$DOCUMENT/VectorEngine/**"}]
     },
     {
-      "identifier": "fs:allow-read_text-file",
+      "identifier": "fs:allow-mkdir",
+      "allow": [{"path": "$DOCUMENT/VectorEngine/**"}]
+    },
+    {
+      "identifier": "fs:allow-read-text-file",
       "allow": [{"path": "$DOCUMENT/VectorEngine/**"}]
     },
     {

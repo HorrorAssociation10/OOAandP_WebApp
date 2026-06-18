@@ -202,6 +202,7 @@ export class Rect extends Shape {
     toJSON(): string {
         let rectProps = {
             id: this.id,
+            type: 'rect',
             width: this.width,
             height: this.height,
             transform: {
@@ -294,6 +295,7 @@ export class Line extends Shape{
     toJSON(): string {
         let rectProps = {
             id: this.id,
+            type: 'line',
             x0: this.x0,
             y0: this.y0,
             x1: this.x1,
@@ -390,6 +392,7 @@ export class Ellipse extends Shape {
     toJSON(): string {
         let rectProps = {
             id: this.id,
+            type: 'ellipse',
             cx: this.cx,
             cy: this.cy,
             rx: this.rx,
@@ -511,9 +514,10 @@ export class Triangle extends Shape {
     toJSON(): string {
         let triangleProps = {
             id: this.id,
+            type: 'triangle',
             point1: {x: this.x1, y: this.y1},
-            point2: {x: this.x1, y: this.y1},
-            point3: {x: this.x1, y: this.y1},
+            point2: {x: this.x2, y: this.y2},
+            point3: {x: this.x3, y: this.y3},
             transform: {
                 x: this.transform.x,
                 y: this.transform.y,
@@ -778,6 +782,7 @@ export class QuadraticBezier extends Shape {
     toJSON(): string {
         let curveProps = {
             id: this.id,
+            type: 'quad',
             p0: {x: this.p0x, y: this.p0y},
             p1: {x: this.p1x, y: this.p1y},
             p2: {x: this.p2x, y: this.p2y},
@@ -1076,6 +1081,7 @@ export class CubicBezier extends Shape {
     toJSON(): string {
         let curveProps = {
             id: this.id,
+            type: 'cubic',
             p0: {x: this.p0x, y: this.p0y},
             p1: {x: this.p1x, y: this.p1y},
             p2: {x: this.p2x, y: this.p2y},
@@ -1344,6 +1350,7 @@ export class PathBezier extends Shape {
     toJSON(): string {
         let curveProps = {
             id: this.id,
+            type: 'path',
             points: this.points,
             mode: this.mode,
             transform: {
@@ -1361,7 +1368,7 @@ export class PathBezier extends Shape {
         }
 
         let curvePropsJSON = JSON.stringify(curveProps);
-        return curvePropsJSON;        
+        return curvePropsJSON;
         // throw new Error("Not implemented yet");
     }
 }

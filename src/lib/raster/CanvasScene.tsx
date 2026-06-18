@@ -366,7 +366,7 @@ export const CanvasScene = ({ lineAlg, shapes, setShapes, selectedId, setSelecte
             rendererRef.current.setLineAlgorithm(lineAlg);
         }
     }, [lineAlg]);
-    
+
     useEffect(() => {
         const canvas = canvasRef.current;
         if (!canvas) {

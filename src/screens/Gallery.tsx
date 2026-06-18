@@ -1,35 +1,45 @@
-import {useState} from "react";
-import {Link} from "react-router-dom";
+import {useState, useEffect} from "react";
+import {Link, useNavigate} from "react-router-dom";
 import {motion} from "framer-motion"
-
-let nextId = 0;
-
-type Project = {
-    id: number,
-    name: string,
-    date: string
-}
+import { loadProjectIndex } from "../lib/projectStorage";
+import { ProjectIndexItem } from "../types/project";
 
 export default function Gallery(){    
-    const [projects, setProjects] = useState<Project[]>([]);
+    const [projects, setProjects] = useState<ProjectIndexItem[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const navigate = useNavigate();
 
-    const addProject = () => {
-        setProjects(
-            [
-                ...projects,
-                { id: nextId++, name: 'New Project'+(nextId-1), date: '2020.04.15' },
-            ]
-        );
+    useEffect(() => {
+        async function fetchProjects() {
+            try {
+                const indexList = await loadProjectIndex();
+                setProjects(indexList);
+            } catch (error) {
+                console.error();
+            } finally {
+                setIsLoading(false);
+            }
+        }
+        fetchProjects();
+    }, []);
+
+    const createNewProject = () => {
+        const newId = crypto.randomUUID();
+        navigate(`editor/${newId}`);
+    };
+
+    if (isLoading) {
+        return <div className="text-white text-center p-10">Загрузка...</div>;
     }
 
     if (!projects.length){
         return (
             <div>
-                <button onClick={addProject}>Create Project</button>
+                <button onClick={createNewProject}>Create Project</button>
                 <div className="flex justify-around">
                     <p>Seems like you've got no projects yet... Let's fix that! <br/>
                     Hit the "Create Project" button in the top left corner</p>
-                    <p>Current projects length: {nextId}</p>
+                    <p>Current projects length: {projects.length}</p>
                 </div>
             </div>
         )
@@ -37,7 +47,7 @@ export default function Gallery(){
     else {
         return (
             <div>
-                <button onClick={addProject}>Create Project</button>
+                <button onClick={createNewProject}>Create Project</button>
                 <div className="grid grid-cols-1 md:grid-cols-3 p-4">
                     {projects.map(project => (
                         <Link to={`/editor/${project.id}`}>
