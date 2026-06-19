@@ -793,6 +793,7 @@ export class QuadraticBezier extends Shape {
                 scaleX: this.transform.scaleX,
                 scaleY: this.transform.scaleY
             },
+            closed: this.closed,
             fillStyle: this.fillStyle,
             fillOpacity: this.fillOpacity,
             strokeStyle: this.strokeStyle,
@@ -1093,6 +1094,7 @@ export class CubicBezier extends Shape {
                 scaleX: this.transform.scaleX,
                 scaleY: this.transform.scaleY
             },
+            closed: this.closed,
             fillStyle: this.fillStyle,
             fillOpacity: this.fillOpacity,
             strokeStyle: this.strokeStyle,
@@ -1360,6 +1362,7 @@ export class PathBezier extends Shape {
                 scaleX: this.transform.scaleX,
                 scaleY: this.transform.scaleY
             },
+            closed: this.closed,
             fillStyle: this.fillStyle,
             fillOpacity: this.fillOpacity,
             strokeStyle: this.strokeStyle,
