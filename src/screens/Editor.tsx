@@ -1,4 +1,4 @@
-import {RectangleHorizontal, Circle, Hexagon, ArrowBigLeft, Save} from "lucide-react"
+import {RectangleHorizontal, Slash, Circle, Triangle, Spline, SplinePointer, ChartSpline, ArrowBigLeft, Save} from "lucide-react"
 import {useParams, Link} from "react-router-dom"
 import {useState, useEffect} from "react"
 import {motion} from "framer-motion"
@@ -152,8 +152,12 @@ export default function Editor(){
             <div className="flex flex-1 justify-between">
                 <aside className="w-16 border-r bg-slate-800 flex flex-col justify-evenly items-center">
                     <div className="bg-slate-600 w-12 h-12 flex justify-center items-center rounded-2xl hover:bg-slate-500"><RectangleHorizontal/></div>
+                    <div className="bg-slate-600 w-12 h-12 flex justify-center items-center rounded-2xl hover:bg-slate-500"><Slash/></div>
                     <div className="bg-slate-600 w-12 h-12 flex justify-center items-center rounded-2xl hover:bg-slate-500"><Circle/></div>
-                    <div className="bg-slate-600 w-12 h-12 flex justify-center items-center rounded-2xl hover:bg-slate-500"><Hexagon/></div>
+                    <div className="bg-slate-600 w-12 h-12 flex justify-center items-center rounded-2xl hover:bg-slate-500"><Triangle/></div>
+                    <div className="bg-slate-600 w-12 h-12 flex justify-center items-center rounded-2xl hover:bg-slate-500"><Spline/></div>
+                    <div className="bg-slate-600 w-12 h-12 flex justify-center items-center rounded-2xl hover:bg-slate-500"><SplinePointer/></div>
+                    <div className="bg-slate-600 w-12 h-12 flex justify-center items-center rounded-2xl hover:bg-slate-500"><ChartSpline/></div>
                 </aside>
                 <CanvasScene 
                     lineAlg={alg} 
