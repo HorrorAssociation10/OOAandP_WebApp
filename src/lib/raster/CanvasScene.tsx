@@ -9,7 +9,10 @@ interface CanvasSceneProps {
     setSelectedId: (id: Number | null) => void,
     setShapes: React.Dispatch<React.SetStateAction<Shape[]>>;
     lineAlg: LineAlg;
+    currentTool: toolType;
 }
+
+export type toolType = 'select' | 'rect' | 'line' | 'ellipse' | 'triangle' | 'quad' | 'cubic' | 'path';
 
 type InteractionMode = "IDLE" | "DRAGGING" | "RESIZING" | "ROTATING" | "EDITING_POINTS";
 
@@ -32,13 +35,15 @@ interface InteractionState {
     } | null;
 }
 
-export const CanvasScene = ({ lineAlg, shapes, setShapes, selectedId, setSelectedId }: CanvasSceneProps) => {
+export const CanvasScene = ({ lineAlg, shapes, setShapes, selectedId, setSelectedId, currentTool }: CanvasSceneProps) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const rendererRef = useRef<RasterRenderer>(null);
     const containerRef = useRef<HTMLDivElement | null>(null);
-    
-    // const [shapes, setShapes] = useState<Shape[]>([]);
-    // const [selectedId, setSelectedId] = useState<Number | null>(null);
+    const currentToolRef = useRef<toolType>(currentTool);
+
+    useEffect(() => {
+        currentToolRef.current = currentTool;
+    }, [currentTool]);
     
     useEffect(() => {
         const SomeRect: Shape = new Rect(70, 120);
@@ -197,6 +202,72 @@ export const CanvasScene = ({ lineAlg, shapes, setShapes, selectedId, setSelecte
                 }
             };
         } else {
+            const tool: toolType = currentToolRef.current;
+            
+            if (tool != 'select'){
+                let newShape: Shape | null = null;
+
+                switch (tool) {
+                    case 'rect': {
+                        newShape = new Rect(100, 80);
+                        break;
+                    }
+                    case 'line': {
+                        newShape = new Line(0, 0, 150, 100, 5);
+                        break;
+                    }
+                    case 'ellipse': {
+                        newShape = new Ellipse(0, 0, 50, 50);
+                        break;
+                    }
+                    case 'triangle': {
+                        newShape = new Triangle(0, 0, 50, 100, 100, 20);
+                        break;
+                    }
+                    case 'quad': {
+                        newShape = new QuadraticBezier(0, 0, 50, -50, 100, 0, true, 3);
+                        break;
+                    }
+                    case 'cubic': {
+                        newShape = new CubicBezier(0, 0, 30, -50, 70, 50, 100, 0, true, 3);
+                        break;
+                    }
+                    case 'path': {
+                        const defaultPoints = [{x: 0, y: 0}, {x: 50, y: 50}, {x: 100, y: 0}];
+                        newShape = new PathBezier(defaultPoints, 'bezier', true, 3);
+                        break;
+                    }
+                    default:{
+                        break;
+                    }
+                }
+
+                if (newShape) {
+                    newShape.transform.x = coords.x;
+                    newShape.transform.y = coords.y;
+                    newShape.strokeStyle = '#54a4f2';
+                    newShape.strokeWidth = 3;
+
+                    const updatedShapes = [...currentShapes, newShape];
+                    setShapes(updatedShapes);
+                    setSelectedId(newShape.id);
+                    
+                    interactionRef.current = {
+                        mode: "DRAGGING",
+                        startX: coords.x,
+                        startY: coords.y,
+                        activeHandle: null,
+                        startTransform: {
+                            x: newShape.transform.x,
+                            y: newShape.transform.y,
+                            rotation: 0,
+                            scaleX: 1,
+                            scaleY: 1
+                        }
+                    };
+                    return;
+                }
+            }
             setSelectedId(null);
         }
     };

@@ -1,10 +1,10 @@
-import {RectangleHorizontal, Slash, Circle, Triangle, Spline, SplinePointer, ChartSpline, ArrowBigLeft, Save} from "lucide-react"
+import {MousePointer, RectangleHorizontal, Slash, Circle, Triangle, Spline, SplinePointer, ChartSpline, ArrowBigLeft, Save} from "lucide-react"
 import {useParams, Link} from "react-router-dom"
 import {useState, useEffect} from "react"
 import {motion} from "framer-motion"
 import {LineAlg} from "../lib/raster/RasterRenderer"
 import {Shape} from "../lib/raster/ShapesVisualization";
-import {CanvasScene} from "../lib/raster/CanvasScene"
+import {CanvasScene, toolType} from "../lib/raster/CanvasScene"
 
 import {loadProject, saveProject} from "../lib/projectStorage";
 import { shapeFromJSON } from "../lib/ShapeFactory";
@@ -16,6 +16,7 @@ export default function Editor(){
     const [alg, SetLineAlg] = useState<LineAlg>('bresenham');
     const [shapes, setShapes] = useState<Shape[]>([]);
     const [selectedId, setSelectedId] = useState<Number | null>(null);
+    const [currentTool, setCurrentTool] = useState<toolType>('select');
 
     const [projectName, setProjectName] = useState<string>(`Проект №${id}`);
     const [createdAt, setCreatedAt] = useState<string>(new Date().toISOString());
@@ -151,20 +152,30 @@ export default function Editor(){
             </header>
             <div className="flex flex-1 justify-between">
                 <aside className="w-16 border-r bg-slate-800 flex flex-col justify-evenly items-center">
-                    <div className="bg-slate-600 w-12 h-12 flex justify-center items-center rounded-2xl hover:bg-slate-500"><RectangleHorizontal/></div>
-                    <div className="bg-slate-600 w-12 h-12 flex justify-center items-center rounded-2xl hover:bg-slate-500"><Slash/></div>
-                    <div className="bg-slate-600 w-12 h-12 flex justify-center items-center rounded-2xl hover:bg-slate-500"><Circle/></div>
-                    <div className="bg-slate-600 w-12 h-12 flex justify-center items-center rounded-2xl hover:bg-slate-500"><Triangle/></div>
-                    <div className="bg-slate-600 w-12 h-12 flex justify-center items-center rounded-2xl hover:bg-slate-500"><Spline/></div>
-                    <div className="bg-slate-600 w-12 h-12 flex justify-center items-center rounded-2xl hover:bg-slate-500"><SplinePointer/></div>
-                    <div className="bg-slate-600 w-12 h-12 flex justify-center items-center rounded-2xl hover:bg-slate-500"><ChartSpline/></div>
+                    <div className="bg-slate-600 w-12 h-12 flex justify-center items-center rounded-2xl hover:bg-slate-500"
+                        onClick={() => setCurrentTool('select')}><MousePointer/></div>
+                    <div className="bg-slate-600 w-12 h-12 flex justify-center items-center rounded-2xl hover:bg-slate-500"
+                        onClick={() => setCurrentTool('rect')}><RectangleHorizontal/></div>
+                    <div className="bg-slate-600 w-12 h-12 flex justify-center items-center rounded-2xl hover:bg-slate-500"
+                        onClick={() => setCurrentTool('line')}><Slash/></div>
+                    <div className="bg-slate-600 w-12 h-12 flex justify-center items-center rounded-2xl hover:bg-slate-500"
+                        onClick={() => setCurrentTool('ellipse')}><Circle/></div>
+                    <div className="bg-slate-600 w-12 h-12 flex justify-center items-center rounded-2xl hover:bg-slate-500"
+                        onClick={() => setCurrentTool('triangle')}><Triangle/></div>
+                    <div className="bg-slate-600 w-12 h-12 flex justify-center items-center rounded-2xl hover:bg-slate-500"
+                        onClick={() => setCurrentTool('quad')}><Spline/></div>
+                    <div className="bg-slate-600 w-12 h-12 flex justify-center items-center rounded-2xl hover:bg-slate-500"
+                        onClick={() => setCurrentTool('cubic')}><SplinePointer/></div>
+                    <div className="bg-slate-600 w-12 h-12 flex justify-center items-center rounded-2xl hover:bg-slate-500"
+                        onClick={() => setCurrentTool('path')}><ChartSpline/></div>
                 </aside>
                 <CanvasScene 
                     lineAlg={alg} 
                     shapes={shapes} 
                     setShapes={setShapes} 
                     selectedId={selectedId} 
-                    setSelectedId={setSelectedId}>
+                    setSelectedId={setSelectedId}
+                    currentTool={currentTool}>
                 </CanvasScene>
                 {/* <main className="flex-1 bg-slate-100 m-2"></main> */}
                 <aside className="w-64 border-l bg-slate-800 flex flex-col justify-between">
