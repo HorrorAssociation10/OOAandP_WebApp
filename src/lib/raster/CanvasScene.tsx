@@ -310,72 +310,65 @@ export const CanvasScene = ({ lineAlg, shapes, setShapes, selectedId, setSelecte
             const localDx = dx * Math.cos(-origRad) - dy * Math.sin(-origRad);
             const localDy = dx * Math.sin(-origRad) + dy * Math.cos(-origRad);
 
-            const startW = startTransform.width ?? 1;
-            const startH = startTransform.height ?? 1;
+            const baseW = startTransform.width ?? 1;
+            const baseH = startTransform.height ?? 1;
+
+            const currentW = baseW * startTransform.scaleX;
+            const currentH = baseH * startTransform.scaleY;
 
             let factorX = 1;
             let factorY = 1;
-            let localCenterX = 0;
-            let localCenterY = 0;
+            const bounds = activeShape.getLocalBounds();
+            let localAnchorX = 0;
+            let localAnchorY = 0;
 
             switch (interaction.activeHandle) {
                 case "BR":
-                    factorX = (startW + localDx) / startW;
-                    factorY = (startH + localDy) / startH;
-                    localCenterX = localDx / 2;
-                    localCenterY = localDy / 2;
+                    factorX = (currentW + localDx) / currentW;
+                    factorY = (currentH + localDy) / currentH;
+                    localAnchorX = bounds.minX;
+                    localAnchorY = bounds.minY;
                     break;
 
                 case "TL":
-                    factorX = (startW - localDx) / startW;
-                    factorY = (startH - localDy) / startH;
-                    localCenterX = localDx / 2;
-                    localCenterY = localDy / 2;
+                    factorX = (currentW - localDx) / currentW;
+                    factorY = (currentH - localDy) / currentH;
+                    localAnchorX = bounds.maxX;
+                    localAnchorY = bounds.maxY;
                     break;
 
                 case "TR":
-                    factorX = (startW + localDx) / startW;
-                    factorY = (startH - localDy) / startH;
-                    localCenterX = localDx / 2;
-                    localCenterY = localDy / 2;
+                    factorX = (currentW + localDx) / currentW;
+                    factorY = (currentH - localDy) / currentH;
+                    localAnchorX = bounds.minX;
+                    localAnchorY = bounds.maxY;
                     break;
 
                 case "BL": 
-                    factorX = (startW - localDx) / startW;
-                    factorY = (startH + localDy) / startH;
-                    localCenterX = localDx / 2;
-                    localCenterY = localDy / 2;
+                    factorX = (currentW - localDx) / currentW;
+                    factorY = (currentH + localDy) / currentH;
+                    localAnchorX = bounds.maxX;
+                    localAnchorY = bounds.minY;
                     break;
             }
 
             const minScale = 0.1;
             const maxScale = 20.0;
-                
+            
             let newScaleX = Math.max(minScale, Math.min(maxScale, startTransform.scaleX * factorX));
             let newScaleY = Math.max(minScale, Math.min(maxScale, startTransform.scaleY * factorY));
-
-            const realFactorX = newScaleX / startTransform.scaleX;
-            const realFactorY = newScaleY / startTransform.scaleY;
-            localCenterX = (startW * (realFactorX - 1)) / 2;
-            localCenterY = (startH * (realFactorY - 1)) / 2;
-  
-            if (interaction.activeHandle === "TL") {
-                localCenterX = -localCenterX;
-                localCenterY = -localCenterY;
-            } else if (interaction.activeHandle === "TR") {
-                localCenterY = -localCenterY;
-            } else if (interaction.activeHandle === "BL") {
-                localCenterX = -localCenterX;
-            }
-
+            
+            const anchorWorldBeforeX = startTransform.x + (localAnchorX * startTransform.scaleX * Math.cos(origRad) - localAnchorY * startTransform.scaleY * Math.sin(origRad));
+            const anchorWorldBeforeY = startTransform.y + (localAnchorX * startTransform.scaleX * Math.sin(origRad) + localAnchorY * startTransform.scaleY * Math.cos(origRad));
+            
             activeShape.transform.scaleX = newScaleX;
             activeShape.transform.scaleY = newScaleY;
-
-            const worldCenterX = localCenterX * Math.cos(origRad) - localCenterY * Math.sin(origRad);
-            const worldCenterY = localCenterX * Math.sin(origRad) + localCenterY * Math.cos(origRad);
-
-            activeShape.transform.x = startTransform.x + worldCenterX;
-            activeShape.transform.y = startTransform.y + worldCenterY;
+            
+            const anchorWorldAfterX = localAnchorX * newScaleX * Math.cos(origRad) - localAnchorY * newScaleY * Math.sin(origRad);
+            const anchorWorldAfterY = localAnchorX * newScaleX * Math.sin(origRad) + localAnchorY * newScaleY * Math.cos(origRad);
+            
+            activeShape.transform.x = anchorWorldBeforeX - anchorWorldAfterX;
+            activeShape.transform.y = anchorWorldBeforeY - anchorWorldAfterY;
         }
 
         else if (interaction.mode === "EDITING_POINTS" && interaction.activePointIndex != undefined) {
@@ -401,13 +394,32 @@ export const CanvasScene = ({ lineAlg, shapes, setShapes, selectedId, setSelecte
         const localMouse = shape.transformPointToLocal(mouseX, mouseY);
         if (!localMouse) return null;
         
-        const bounds = shape.getLocalBounds();   
-        const padding = 4;
+        const bounds = shape.getLocalBounds();
+        
+        const deviceTL = shape.transformPointToDevice(bounds.minX, bounds.minY);
+        const deviceTR = shape.transformPointToDevice(bounds.maxX, bounds.minY);
 
-        const left = bounds.minX - padding;
-        const right = bounds.maxX + padding;
-        const top = bounds.minY - padding;
-        const bottom = bounds.maxY + padding;
+        const middleTopX = (deviceTL.x + deviceTR.x) / 2;
+        const middleTopY = (deviceTL.y + deviceTR.y) / 2;
+
+        const origRad = shape.transform.rotation;
+        const sin = Math.sin(origRad);
+        const cos = Math.cos(origRad);
+
+        const deviceRotX = middleTopX + 25 * sin;
+        const deviceRotY = middleTopY - 25 * cos;
+
+        const dx = mouseX - deviceRotX;
+        const dy = mouseY - deviceRotY;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        const clickRadius = 10;
+        if (distance <= clickRadius) return "ROTATION";
+
+        const left = bounds.minX;
+        const right = bounds.maxX;
+        const top = bounds.minY;
+        const bottom = bounds.maxY;
         const centerX = (left + right) / 2;
         const centerY = (top + bottom) / 2;
         const hitRadius = 8 / shape.transform.scaleX;
@@ -416,7 +428,7 @@ export const CanvasScene = ({ lineAlg, shapes, setShapes, selectedId, setSelecte
             return Math.abs(localMouse.x - hx) <= hitRadius && Math.abs(localMouse.y - hy) <= hitRadius;
         };
 
-        if (isHit(centerX, top - 25)) return "ROTATION";
+        // if (isHit(centerX, top - 25)) return "ROTATION";
 
         if (isHit(left, top)) return "TL";
         if (isHit(right, top)) return "TR";
@@ -471,20 +483,29 @@ export const CanvasScene = ({ lineAlg, shapes, setShapes, selectedId, setSelecte
                     const selectedShape = currentShapes.find(shape => shape.id == currentSelectedId);
                     if (selectedShape) {
                         const localBounds = selectedShape.getLocalBounds();
-                        const padding = 4;
-                        const left = localBounds.minX - padding;
-                        const right = localBounds.maxX + padding;
-                        const top = localBounds.minY - padding;
-                        const bottom = localBounds.maxY + padding;
-                        const centerX = (left + right) / 2;
+                        
+                        const left = localBounds.minX;
+                        const right = localBounds.maxX;
+                        const top = localBounds.minY;
+                        const bottom = localBounds.maxY;
 
                         const deviceTL = selectedShape.transformPointToDevice(left, top);
                         const deviceTR = selectedShape.transformPointToDevice(right, top);
                         const deviceBR = selectedShape.transformPointToDevice(right, bottom);
                         const deviceBL = selectedShape.transformPointToDevice(left, bottom);
 
-                        const deviceRotationHandleLineEnd = selectedShape.transformPointToDevice(centerX, top - 25);
-                        const deviceRotationHandleLineStart = selectedShape.transformPointToDevice(centerX, top);
+                        const origRad = selectedShape.transform.rotation;
+                        const cos = Math.cos(origRad);
+                        const sin = Math.sin(origRad);
+
+                        const middleTopX = (deviceTL.x + deviceTR.x) / 2;
+                        const middleTopY = (deviceTL.y + deviceTR.y) / 2;
+
+                        const deviceRotationHandleLineEnd = {x: middleTopX, y: middleTopY};
+                        const deviceRotationHandleLineStart = {
+                            x: middleTopX + 25*sin,
+                            y: middleTopY - 25*cos
+                        };
                         
                         r.strokePolygon(
                             [deviceTL, deviceTR, deviceBR, deviceBL],
@@ -496,7 +517,7 @@ export const CanvasScene = ({ lineAlg, shapes, setShapes, selectedId, setSelecte
                             { r: 0, g: 122, b: 204, a: 255 }, 1.5
                         );
 
-                        r.fillCircle(deviceRotationHandleLineEnd.x, deviceRotationHandleLineEnd.y, 6, { r: 46, g: 204, b: 113, a: 255 });
+                        r.fillCircle(deviceRotationHandleLineStart.x, deviceRotationHandleLineStart.y, 6, { r: 46, g: 204, b: 113, a: 255 });
 
                         const handlePositions = [deviceTL, deviceTR, deviceBR, deviceBL];
                         handlePositions.forEach(point => {
